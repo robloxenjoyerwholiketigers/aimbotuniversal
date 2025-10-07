@@ -1,0 +1,2725 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+local Camera = workspace.CurrentCamera
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Variabile per tracciare se lo script è attivo
+local scriptActive = true
+local allConnections = {}
+
+-- Variabili Fly System
+local flyEnabled = false
+local flySpeed = 50
+local flyConnection = nil
+local upHolding = false
+local downHolding = false
+
+-- Funzione per disconnettere tutte le connessioni
+local function cleanupScript()
+    scriptActive = false
+    for _, conn in pairs(allConnections) do
+        if conn then
+            pcall(function() conn:Disconnect() end)
+        end
+    end
+    allConnections = {}
+end
+
+-- Create Intro GUI
+local IntroGUI = Instance.new("ScreenGui")
+IntroGUI.Name = "MoonlightIntro"
+IntroGUI.ResetOnSpawn = false
+IntroGUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local IntroFrame = Instance.new("Frame")
+IntroFrame.Name = "IntroFrame"
+IntroFrame.Size = UDim2.new(1, 0, 1, 0)
+IntroFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+IntroFrame.BorderSizePixel = 0
+IntroFrame.Parent = IntroGUI
+
+local IntroText = Instance.new("TextLabel")
+IntroText.Name = "IntroText"
+IntroText.Size = UDim2.new(0.8, 0, 0.3, 0)
+IntroText.Position = UDim2.new(0.1, 0, 0.35, 0)
+IntroText.BackgroundTransparency = 1
+IntroText.Text = "Made by lifeischilling"
+IntroText.TextColor3 = Color3.new(0.5, 0, 0)
+IntroText.TextTransparency = 1
+IntroText.Font = Enum.Font.Creepster
+IntroText.TextSize = 60
+IntroText.TextStrokeTransparency = 0.5
+IntroText.TextStrokeColor3 = Color3.new(1, 0, 0)
+IntroText.Parent = IntroFrame
+
+IntroGUI.Parent = PlayerGui
+
+local fadeInTween = TweenService:Create(
+    IntroText,
+    TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.In),
+    {TextTransparency = 0, TextColor3 = Color3.new(1, 0, 0)}
+)
+
+local glowTween = TweenService:Create(
+    IntroText,
+    TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+    {TextStrokeTransparency = 0}
+)
+
+fadeInTween:Play()
+wait(0.5)
+glowTween:Play()
+wait(2.5)
+glowTween:Cancel()
+
+local fadeOutTween = TweenService:Create(
+    IntroFrame,
+    TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
+    {BackgroundTransparency = 1}
+)
+
+local textFadeOutTween = TweenService:Create(
+    IntroText,
+    TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out),
+    {TextTransparency = 1, TextStrokeTransparency = 1}
+)
+
+fadeOutTween:Play()
+textFadeOutTween:Play()
+wait(0.5)
+IntroGUI:Destroy()
+
+-- KEY SYSTEM GUI
+local KeySystemGUI = Instance.new("ScreenGui")
+KeySystemGUI.Name = "KeySystemGUI"
+KeySystemGUI.ResetOnSpawn = false
+KeySystemGUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local KeyFrame = Instance.new("Frame")
+KeyFrame.Name = "KeyFrame"
+KeyFrame.Size = UDim2.new(0, 450, 0, 300)
+KeyFrame.Position = UDim2.new(0.5, -225, 0.5, -150)
+KeyFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+KeyFrame.BorderSizePixel = 0
+KeyFrame.Parent = KeySystemGUI
+
+local KeyFrameCorner = Instance.new("UICorner")
+KeyFrameCorner.CornerRadius = UDim.new(0, 12)
+KeyFrameCorner.Parent = KeyFrame
+
+local KeyFrameStroke = Instance.new("UIStroke")
+KeyFrameStroke.Color = Color3.fromRGB(139, 0, 0)
+KeyFrameStroke.Thickness = 3
+KeyFrameStroke.Parent = KeyFrame
+
+-- Demonic glow effect
+local KeyGlow = Instance.new("ImageLabel")
+KeyGlow.Size = UDim2.new(1.1, 0, 1.1, 0)
+KeyGlow.Position = UDim2.new(-0.05, 0, -0.05, 0)
+KeyGlow.BackgroundTransparency = 1
+KeyGlow.Image = "rbxassetid://5028857084"
+KeyGlow.ImageColor3 = Color3.fromRGB(139, 0, 0)
+KeyGlow.ImageTransparency = 0.5
+KeyGlow.ZIndex = 0
+KeyGlow.Parent = KeyFrame
+
+-- Key Title
+local KeyTitle = Instance.new("TextLabel")
+KeyTitle.Size = UDim2.new(1, -40, 0, 60)
+KeyTitle.Position = UDim2.new(0, 20, 0, 20)
+KeyTitle.BackgroundTransparency = 1
+KeyTitle.Text = "🔥 MOONLIGHT KEY SYSTEM 🔥"
+KeyTitle.TextColor3 = Color3.fromRGB(220, 20, 20)
+KeyTitle.Font = Enum.Font.GothamBold
+KeyTitle.TextSize = 20
+KeyTitle.TextStrokeTransparency = 0.5
+KeyTitle.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+KeyTitle.Parent = KeyFrame
+
+-- Key Input Box
+local KeyInputFrame = Instance.new("Frame")
+KeyInputFrame.Size = UDim2.new(0, 380, 0, 50)
+KeyInputFrame.Position = UDim2.new(0.5, -190, 0, 100)
+KeyInputFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+KeyInputFrame.BorderSizePixel = 0
+KeyInputFrame.Parent = KeyFrame
+
+local KeyInputCorner = Instance.new("UICorner")
+KeyInputCorner.CornerRadius = UDim.new(0, 8)
+KeyInputCorner.Parent = KeyInputFrame
+
+local KeyInputStroke = Instance.new("UIStroke")
+KeyInputStroke.Color = Color3.fromRGB(80, 0, 0)
+KeyInputStroke.Thickness = 2
+KeyInputStroke.Parent = KeyInputFrame
+
+local KeyInput = Instance.new("TextBox")
+KeyInput.Size = UDim2.new(1, -20, 1, 0)
+KeyInput.Position = UDim2.new(0, 10, 0, 0)
+KeyInput.BackgroundTransparency = 1
+KeyInput.Text = ""
+KeyInput.PlaceholderText = "Enter Key..."
+KeyInput.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
+KeyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+KeyInput.Font = Enum.Font.Gotham
+KeyInput.TextSize = 16
+KeyInput.TextXAlignment = Enum.TextXAlignment.Left
+KeyInput.Parent = KeyInputFrame
+
+-- Submit Button
+local SubmitButton = Instance.new("TextButton")
+SubmitButton.Size = UDim2.new(0, 180, 0, 45)
+SubmitButton.Position = UDim2.new(0.5, -185, 0, 170)
+SubmitButton.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+SubmitButton.BorderSizePixel = 0
+SubmitButton.Text = "SUBMIT KEY"
+SubmitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+SubmitButton.Font = Enum.Font.GothamBold
+SubmitButton.TextSize = 14
+SubmitButton.Parent = KeyFrame
+
+local SubmitCorner = Instance.new("UICorner")
+SubmitCorner.CornerRadius = UDim.new(0, 8)
+SubmitCorner.Parent = SubmitButton
+
+-- Get Key Button (Azzurro)
+local GetKeyButton = Instance.new("TextButton")
+GetKeyButton.Size = UDim2.new(0, 180, 0, 45)
+GetKeyButton.Position = UDim2.new(0.5, 5, 0, 170)
+GetKeyButton.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+GetKeyButton.BorderSizePixel = 0
+GetKeyButton.Text = "GET KEY"
+GetKeyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+GetKeyButton.Font = Enum.Font.GothamBold
+GetKeyButton.TextSize = 14
+GetKeyButton.Parent = KeyFrame
+
+local GetKeyCorner = Instance.new("UICorner")
+GetKeyCorner.CornerRadius = UDim.new(0, 8)
+GetKeyCorner.Parent = GetKeyButton
+
+-- Status Label
+local KeyStatus = Instance.new("TextLabel")
+KeyStatus.Size = UDim2.new(1, -40, 0, 30)
+KeyStatus.Position = UDim2.new(0, 20, 0, 235)
+KeyStatus.BackgroundTransparency = 1
+KeyStatus.Text = ""
+KeyStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
+KeyStatus.Font = Enum.Font.Gotham
+KeyStatus.TextSize = 12
+KeyStatus.Parent = KeyFrame
+
+KeySystemGUI.Parent = PlayerGui
+
+-- Get Key Button Handler
+GetKeyButton.MouseButton1Click:Connect(function()
+    setclipboard("https://discord.gg/cMYNjwFRdp")
+    KeyStatus.Text = "✅ Discord link copied to clipboard!"
+    KeyStatus.TextColor3 = Color3.fromRGB(100, 255, 100)
+    wait(2)
+    KeyStatus.Text = ""
+end)
+
+-- Submit Button Handler
+local correctKey = "sapipoebbasta"
+local keyAccepted = false
+
+SubmitButton.MouseButton1Click:Connect(function()
+    if KeyInput.Text == correctKey then
+        keyAccepted = true
+        KeyStatus.Text = "✅ Key Accepted! Loading script..."
+        KeyStatus.TextColor3 = Color3.fromRGB(100, 255, 100)
+        wait(1)
+        KeySystemGUI:Destroy()
+        loadMainScript()
+    else
+        KeyStatus.Text = "❌ Invalid Key! Try again..."
+        KeyStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
+        KeyInput.Text = ""
+    end
+end)
+
+-- Enter key support
+KeyInput.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        SubmitButton.MouseButton1Click:Fire()
+    end
+end)
+
+-- FLY SYSTEM FUNCTIONS
+local function startFly()
+    if not scriptActive or not LocalPlayer.Character then return end
+    
+    flyConnection = RunService.Heartbeat:Connect(function()
+        if not scriptActive or not flyEnabled or not LocalPlayer.Character then
+            if flyConnection then
+                flyConnection:Disconnect()
+                flyConnection = nil
+            end
+            return
+        end
+        
+        local character = LocalPlayer.Character
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        
+        if not rootPart or not humanoid then return end
+        
+        -- TELEPORT SYSTEM - Nessun movimento smooth, solo teleport
+        local moveDirection = Vector3.new(0, 0, 0)
+        
+        -- Movimento orizzontale con WASD (teleport)
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            moveDirection = moveDirection + rootPart.CFrame.LookVector * flySpeed
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            moveDirection = moveDirection - rootPart.CFrame.LookVector * flySpeed
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            moveDirection = moveDirection - rootPart.CFrame.RightVector * flySpeed
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            moveDirection = moveDirection + rootPart.CFrame.RightVector * flySpeed
+        end
+        
+        -- Movimento verticale con bottoni (teleport)
+        if upHolding then
+            moveDirection = moveDirection + Vector3.new(0, flySpeed, 0)
+        end
+        if downHolding then
+            moveDirection = moveDirection + Vector3.new(0, -flySpeed, 0)
+        end
+        
+        -- Applica il teleport
+        if moveDirection.Magnitude > 0 then
+            rootPart.CFrame = rootPart.CFrame + moveDirection
+        end
+        
+        -- Anti-gravità - mantieni la posizione Y
+        rootPart.Velocity = Vector3.new(0, 0, 0)
+        rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+    end)
+end
+
+local function stopFly()
+    if flyConnection then
+        flyConnection:Disconnect()
+        flyConnection = nil
+    end
+end
+
+local function toggleFly()
+    if not scriptActive then return end
+    
+    flyEnabled = not flyEnabled
+    
+    if flyEnabled then
+        startFly()
+    else
+        stopFly()
+    end
+end
+
+local function updateFlySpeed(value)
+    flySpeed = math.clamp(value, 10, 100)
+end
+
+-- Dichiarazione globale delle variabili per evitare troppe locali
+local MoonlightGUI, MainFrame, ContentScroll, ContentFrame
+local FOVCircle, ESPObjects = {}, {}
+local isAiming, connection, currentTarget
+local currentKeybind, UI_HIDE_KEYBIND, uiHidden
+local draggingSlider, draggingColorWheel, draggingBoxThickness, draggingNameSize
+local draggingWalkSpeed, draggingJumpPower, draggingFlySpeed, draggingHitboxSize
+local listeningForInput, listeningForUIKeybind
+local lastAimTime, lastESPUpdate
+
+function loadMainScript()
+    if not scriptActive then return end
+    
+    -- Configuration Variables
+    local AIM_KEY = Enum.UserInputType.MouseButton2
+    local AIM_MODE = "Hold"
+    local FOV_SIZE = 100
+    local FOV_VISIBLE = true
+    local AIM_SMOOTHNESS = 0
+
+    -- NUOVA VARIABILE: Parte del corpo da mirare
+    local AIM_PART = "Head"  -- "Head", "TorsoR6", "TorsoR15"
+
+    -- ESP Configuration
+    local ESP_ENABLED = false
+    local ESP_HUE = 0
+    local ESP_SATURATION = 1
+    local ESP_VALUE = 1
+    local ESP_COLOR = Color3.fromHSV(ESP_HUE, ESP_SATURATION, ESP_VALUE)
+    
+    -- Advanced ESP Settings
+    local ESP_SETTINGS = {
+        ShowBoxes = true,
+        ShowNames = true,
+        ShowTracers = true,
+        ShowHealth = true,
+        HealthColorMode = "match", -- "match" or "custom"
+        RainbowMode = false,
+        BoxThickness = 2,
+        TracerThickness = 1,
+        HealthBarThickness = 4,
+        NameSize = 16,
+        TracerOrigin = "bottom" -- "bottom" or "middle"
+    }
+
+    -- Speed Changer Configuration
+    local SPEED_CHANGER_ENABLED = false
+    local WALK_SPEED = 25
+    local JUMP_POWER = 20
+    local currentHumanoid = nil
+    local speedLoop = nil
+
+    -- Hitbox Expander Configuration
+    local HITBOX_EXPANDER_ENABLED = false
+    local HITBOX_SIZE = 20
+    local hitboxConnection = nil
+
+    -- Noclip Configuration
+    local NOCLIP_ENABLED = false
+    local noclipConnection = nil
+
+    -- UI Hide Keybind
+    UI_HIDE_KEYBIND = Enum.KeyCode.RightShift
+    uiHidden = false
+
+    -- State Variables
+    isAiming = false
+    connection = nil
+    currentKeybind = AIM_KEY
+    currentTarget = nil
+    lastAimTime = 0
+    lastESPUpdate = 0
+
+    -- Inizializza le variabili di dragging
+    draggingSlider = false
+    draggingColorWheel = false
+    draggingBoxThickness = false
+    draggingNameSize = false
+    draggingWalkSpeed = false
+    draggingJumpPower = false
+    draggingFlySpeed = false
+    draggingHitboxSize = false
+    listeningForInput = false
+    listeningForUIKeybind = false
+
+    local function newDrawing(type, props)
+        local obj = Drawing.new(type)
+        for k, v in pairs(props) do
+            obj[k] = v
+        end
+        return obj
+    end
+
+    local function createESPElements()
+        return {
+            Box = newDrawing("Square", {Visible = false, Thickness = ESP_SETTINGS.BoxThickness, Filled = false, Color = ESP_COLOR}),
+            Name = newDrawing("Text", {Visible = false, Center = true, Outline = true, Size = ESP_SETTINGS.NameSize, Font = 2, Color = ESP_COLOR}),
+            Tracer = newDrawing("Line", {Visible = false, Thickness = ESP_SETTINGS.TracerThickness, Color = ESP_COLOR}),
+            HealthBar = newDrawing("Line", {Visible = false, Thickness = ESP_SETTINGS.HealthBarThickness, Color = ESP_COLOR})
+        }
+    end
+
+    local function getRainbowColor(t)
+        local freq = 2
+        return Color3.new(
+            math.sin(freq * t) * 0.5 + 0.5,
+            math.sin(freq * t + 2) * 0.5 + 0.5,
+            math.sin(freq * t + 4) * 0.5 + 0.5
+        )
+    end
+
+    local function getBoxScreenPoints(cframe, size)
+        local half = size / 2
+        local points = {}
+        local visible = true
+        for x = -1,1,2 do
+            for y = -1,1,2 do
+                for z = -1,1,2 do
+                    local corner = cframe * Vector3.new(half.X*x, half.Y*y, half.Z*z)
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(corner)
+                    if not onScreen then visible = false end
+                    table.insert(points, Vector2.new(screenPos.X, screenPos.Y))
+                end
+            end
+        end
+        return points, visible
+    end
+
+    local function hideAll(data)
+        if data then
+            data.Box.Visible = false
+            data.Name.Visible = false
+            data.Tracer.Visible = false
+            data.HealthBar.Visible = false
+        end
+    end
+
+    local function updateESP()
+        if not ESP_ENABLED then
+            for _, data in pairs(ESPObjects) do
+                hideAll(data)
+            end
+            return
+        end
+
+        local now = tick()
+        local baseColor = ESP_SETTINGS.RainbowMode and getRainbowColor(now) or ESP_COLOR
+        local screenCenter = ESP_SETTINGS.TracerOrigin == "bottom" and 
+                           Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y) or
+                           Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                local character = player.Character
+                local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+                if character and humanoid and humanoid.Health > 0 then
+                    local success, cframe, size = pcall(character.GetBoundingBox, character)
+                    if success and cframe and size then
+                        local points, visible = getBoxScreenPoints(cframe, size)
+                        if not visible then
+                            if ESPObjects[player] then
+                                hideAll(ESPObjects[player])
+                            end
+                        else
+                            local data = ESPObjects[player] or createESPElements()
+                            ESPObjects[player] = data
+
+                            local minX, minY, maxX, maxY = math.huge, math.huge, -math.huge, -math.huge
+                            for _, pt in ipairs(points) do
+                                minX = math.min(minX, pt.X)
+                                minY = math.min(minY, pt.Y)
+                                maxX = math.max(maxX, pt.X)
+                                maxY = math.max(maxY, pt.Y)
+                            end
+
+                            local boxWidth, boxHeight = maxX - minX, maxY - minY
+                            local slimWidth = boxWidth * 0.7
+                            local slimX = minX + (boxWidth - slimWidth) / 2
+                            local healthRatio = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
+
+                            if ESP_SETTINGS.ShowBoxes then
+                                data.Box.Visible = true
+                                data.Box.Position = Vector2.new(slimX, minY)
+                                data.Box.Size = Vector2.new(slimWidth, boxHeight)
+                                data.Box.Color = baseColor
+                                data.Box.Thickness = ESP_SETTINGS.BoxThickness
+                            else
+                                data.Box.Visible = false
+                            end
+
+                            if ESP_SETTINGS.ShowNames then
+                                data.Name.Visible = true
+                                data.Name.Text = player.Name
+                                data.Name.Position = Vector2.new(slimX + slimWidth/2, minY - 20)
+                                data.Name.Color = baseColor
+                                data.Name.Size = ESP_SETTINGS.NameSize
+                            else
+                                data.Name.Visible = false
+                            end
+
+                            if ESP_SETTINGS.ShowTracers then
+                                data.Tracer.Visible = true
+                                data.Tracer.From = screenCenter
+                                data.Tracer.To = Vector2.new(slimX + slimWidth/2, maxY)
+                                data.Tracer.Color = baseColor
+                                data.Tracer.Thickness = ESP_SETTINGS.TracerThickness
+                            else
+                                data.Tracer.Visible = false
+                            end
+
+                            if ESP_SETTINGS.ShowHealth then
+                                local barHeight = boxHeight * healthRatio
+                                data.HealthBar.Visible = true
+
+                                if ESP_SETTINGS.HealthColorMode == "custom" then
+                                    local healthPercent = healthRatio
+                                    if healthPercent > 0.7 then
+                                        data.HealthBar.Color = Color3.fromRGB(0, 255, 0)
+                                    elseif healthPercent > 0.3 then
+                                        data.HealthBar.Color = Color3.fromRGB(255, 165, 0)
+                                    else
+                                        data.HealthBar.Color = Color3.fromRGB(255, 0, 0)
+                                    end
+                                else
+                                    data.HealthBar.Color = baseColor
+                                end
+
+                                data.HealthBar.From = Vector2.new(slimX - 6, maxY)
+                                data.HealthBar.To = Vector2.new(slimX - 6, maxY - barHeight)
+                                data.HealthBar.Thickness = ESP_SETTINGS.HealthBarThickness
+                            else
+                                data.HealthBar.Visible = false
+                            end
+                        end
+                    end
+                else
+                    if ESPObjects[player] then
+                        hideAll(ESPObjects[player])
+                    end
+                end
+            end
+        end
+    end
+
+    -- Speed Changer Functions
+    local function applySpeed()
+        if not SPEED_CHANGER_ENABLED then return end
+        
+        local character = LocalPlayer.Character
+        if character then
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = WALK_SPEED
+                humanoid.JumpPower = JUMP_POWER
+            end
+        end
+    end
+
+    local function enableSpeedChanger()
+        SPEED_CHANGER_ENABLED = true
+        
+        -- Ferma il loop precedente se esiste
+        if speedLoop then
+            speedLoop:Disconnect()
+            speedLoop = nil
+        end
+        
+        -- Crea un nuovo loop che si ripete ogni 0.05 secondi
+        speedLoop = RunService.Heartbeat:Connect(function()
+            if SPEED_CHANGER_ENABLED then
+                applySpeed()
+            end
+        end)
+        
+        -- Applica immediatamente
+        applySpeed()
+        
+        -- Connetti l'evento per quando il personaggio cambia
+        local charAddedConn = LocalPlayer.CharacterAdded:Connect(function()
+            wait(1) -- Aspetta che il personaggio sia completamente caricato
+            applySpeed()
+        end)
+        table.insert(allConnections, charAddedConn)
+    end
+
+    local function disableSpeedChanger()
+        SPEED_CHANGER_ENABLED = false
+        
+        -- Ferma il loop
+        if speedLoop then
+            speedLoop:Disconnect()
+            speedLoop = nil
+        end
+        
+        -- Ripristina i valori predefiniti
+        local character = LocalPlayer.Character
+        if character then
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = 16
+                humanoid.JumpPower = 50
+            end
+        end
+    end
+
+    local function updateSpeedChanger()
+        if SPEED_CHANGER_ENABLED then
+            applySpeed()
+        end
+    end
+
+    -- Hitbox Expander Functions
+    local function enableHitboxExpander()
+        HITBOX_EXPANDER_ENABLED = true
+        
+        hitboxConnection = RunService.RenderStepped:Connect(function()
+            if not HITBOX_EXPANDER_ENABLED or not scriptActive then
+                if hitboxConnection then
+                    hitboxConnection:Disconnect()
+                    hitboxConnection = nil
+                end
+                return
+            end
+            
+            for _, Player in pairs(Players:GetPlayers()) do
+                if Player == LocalPlayer then continue end
+                if Player.Character then
+                    local HRP = Player.Character:FindFirstChild("HumanoidRootPart")
+                    if HRP then
+                        HRP.Size = Vector3.new(HITBOX_SIZE, HITBOX_SIZE, HITBOX_SIZE)
+                        HRP.CanCollide = false
+                        HRP.Transparency = 0.5
+                    end
+                end
+            end
+        end)
+    end
+
+    local function disableHitboxExpander()
+        HITBOX_EXPANDER_ENABLED = false
+        
+        if hitboxConnection then
+            hitboxConnection:Disconnect()
+            hitboxConnection = nil
+        end
+        
+        -- Ripristina le hitbox originali
+        for _, Player in pairs(Players:GetPlayers()) do
+            if Player == LocalPlayer then continue end
+            if Player.Character then
+                local HRP = Player.Character:FindFirstChild("HumanoidRootPart")
+                if HRP then
+                    HRP.Size = Vector3.new(2, 2, 1) -- Dimensione standard
+                    HRP.CanCollide = true
+                    HRP.Transparency = 0
+                end
+            end
+        end
+    end
+
+    local function updateHitboxSize(value)
+        HITBOX_SIZE = math.clamp(value, 1, 50)
+    end
+
+    -- Noclip Functions
+    local function enableNoclip()
+        NOCLIP_ENABLED = true
+        
+        noclipConnection = RunService.Stepped:Connect(function()
+            if not NOCLIP_ENABLED or not scriptActive then
+                if noclipConnection then
+                    noclipConnection:Disconnect()
+                    noclipConnection = nil
+                end
+                return
+            end
+            
+            local character = LocalPlayer.Character
+            if character then
+                for _, part in pairs(character:GetDescendants()) do
+                    if part:IsA("BasePart") and part.CanCollide then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
+    end
+
+    local function disableNoclip()
+        NOCLIP_ENABLED = false
+        
+        if noclipConnection then
+            noclipConnection:Disconnect()
+            noclipConnection = nil
+        end
+        
+        -- Ripristina le collisioni
+        local character = LocalPlayer.Character
+        if character then
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = true
+                end
+            end
+        end
+    end
+
+    -- Create FOV Circle
+    FOVCircle = Drawing.new("Circle")
+    FOVCircle.Thickness = 2
+    FOVCircle.NumSides = 60
+    FOVCircle.Radius = FOV_SIZE
+    FOVCircle.Filled = false
+    FOVCircle.Transparency = 1
+    FOVCircle.Color = Color3.fromRGB(139, 0, 0)
+    FOVCircle.Visible = FOV_VISIBLE
+
+    -- Create Main GUI
+    MoonlightGUI = Instance.new("ScreenGui")
+    MoonlightGUI.Name = "MoonlightGUI"
+    MoonlightGUI.ResetOnSpawn = false
+    MoonlightGUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    -- Create Main Frame
+    MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, 480, 0, 600)
+    MainFrame.Position = UDim2.new(0.5, -240, 0.5, -300)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Parent = MoonlightGUI
+
+    local MainFrameCorner = Instance.new("UICorner")
+    MainFrameCorner.CornerRadius = UDim.new(0, 12)
+    MainFrameCorner.Parent = MainFrame
+
+    local MainFrameStroke = Instance.new("UIStroke")
+    MainFrameStroke.Color = Color3.fromRGB(139, 0, 0)
+    MainFrameStroke.Thickness = 3
+    MainFrameStroke.Parent = MainFrame
+
+    -- Demonic glow effect
+    local MainGlow = Instance.new("ImageLabel")
+    MainGlow.Size = UDim2.new(1.05, 0, 1.05, 0)
+    MainGlow.Position = UDim2.new(-0.025, 0, -0.025, 0)
+    MainGlow.BackgroundTransparency = 1
+    MainGlow.Image = "rbxassetid://5028857084"
+    MainGlow.ImageColor3 = Color3.fromRGB(139, 0, 0)
+    MainGlow.ImageTransparency = 0.7
+    MainGlow.ZIndex = 0
+    MainGlow.Parent = MainFrame
+
+    -- Create Title Bar
+    local TitleBar = Instance.new("Frame")
+    TitleBar.Name = "TitleBar"
+    TitleBar.Size = UDim2.new(1, 0, 0, 50)
+    TitleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    TitleBar.BorderSizePixel = 0
+    TitleBar.Parent = MainFrame
+
+    local TitleBarCorner = Instance.new("UICorner")
+    TitleBarCorner.CornerRadius = UDim.new(0, 12)
+    TitleBarCorner.Parent = TitleBar
+
+    -- Divider line
+    local TitleDivider = Instance.new("Frame")
+    TitleDivider.Size = UDim2.new(1, 0, 0, 2)
+    TitleDivider.Position = UDim2.new(0, 0, 1, -2)
+    TitleDivider.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+    TitleDivider.BorderSizePixel = 0
+    TitleDivider.Parent = TitleBar
+
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Name = "TitleLabel"
+    TitleLabel.Size = UDim2.new(1, -100, 1, 0)
+    TitleLabel.Position = UDim2.new(0, 20, 0, 0)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Text = "🔥 MOONLIGHT 🔥"
+    TitleLabel.TextColor3 = Color3.fromRGB(220, 20, 20)
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.TextSize = 18
+    TitleLabel.TextStrokeTransparency = 0.5
+    TitleLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    TitleLabel.Parent = TitleBar
+
+    local CloseButton = Instance.new("TextButton")
+    CloseButton.Name = "CloseButton"
+    CloseButton.Size = UDim2.new(0, 40, 0, 40)
+    CloseButton.Position = UDim2.new(1, -45, 0, 5)
+    CloseButton.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+    CloseButton.BorderSizePixel = 0
+    CloseButton.Text = "✕"
+    CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CloseButton.Font = Enum.Font.GothamBold
+    CloseButton.TextSize = 20
+    CloseButton.Parent = TitleBar
+
+    local CloseButtonCorner = Instance.new("UICorner")
+    CloseButtonCorner.CornerRadius = UDim.new(0, 8)
+    CloseButtonCorner.Parent = CloseButton
+
+    -- Credits
+    local CreditsLabel = Instance.new("TextLabel")
+    CreditsLabel.Size = UDim2.new(1, -40, 0, 20)
+    CreditsLabel.Position = UDim2.new(0, 20, 1, -25)
+    CreditsLabel.BackgroundTransparency = 1
+    CreditsLabel.Text = "Made by lifeischilling"
+    CreditsLabel.TextColor3 = Color3.fromRGB(139, 0, 0)
+    CreditsLabel.Font = Enum.Font.GothamBold
+    CreditsLabel.TextSize = 11
+    CreditsLabel.TextXAlignment = Enum.TextXAlignment.Center
+    CreditsLabel.TextStrokeTransparency = 0.8
+    CreditsLabel.Parent = MainFrame
+
+    -- Content Area con ScrollingFrame
+    ContentScroll = Instance.new("ScrollingFrame")
+    ContentScroll.Name = "ContentScroll"
+    ContentScroll.Size = UDim2.new(1, -30, 1, -90)
+    ContentScroll.Position = UDim2.new(0, 15, 0, 60)
+    ContentScroll.BackgroundTransparency = 1
+    ContentScroll.BorderSizePixel = 0
+    ContentScroll.ScrollBarThickness = 4
+    ContentScroll.ScrollBarImageColor3 = Color3.fromRGB(139, 0, 0)
+    ContentScroll.CanvasSize = UDim2.new(0, 0, 0, 2200)
+    ContentScroll.Parent = MainFrame
+
+    ContentFrame = Instance.new("Frame")
+    ContentFrame.Name = "ContentFrame"
+    ContentFrame.Size = UDim2.new(1, -10, 0, 2200)
+    ContentFrame.BackgroundTransparency = 1
+    ContentFrame.Parent = ContentScroll
+
+    -- Function to create section headers
+    local function createSectionHeader(text, parent, yPos)
+        local header = Instance.new("Frame")
+        header.Size = UDim2.new(1, 0, 0, 35)
+        header.Position = UDim2.new(0, 0, 0, yPos)
+        header.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+        header.BorderSizePixel = 0
+        header.Parent = parent
+
+        local headerCorner = Instance.new("UICorner")
+        headerCorner.CornerRadius = UDim.new(0, 6)
+        headerCorner.Parent = header
+
+        local headerStroke = Instance.new("UIStroke")
+        headerStroke.Color = Color3.fromRGB(80, 0, 0)
+        headerStroke.Thickness = 1
+        headerStroke.Parent = header
+
+        local headerLabel = Instance.new("TextLabel")
+        headerLabel.Size = UDim2.new(1, -20, 1, 0)
+        headerLabel.Position = UDim2.new(0, 10, 0, 0)
+        headerLabel.BackgroundTransparency = 1
+        headerLabel.Text = text
+        headerLabel.TextColor3 = Color3.fromRGB(220, 20, 20)
+        headerLabel.Font = Enum.Font.GothamBold
+        headerLabel.TextSize = 13
+        headerLabel.TextXAlignment = Enum.TextXAlignment.Left
+        headerLabel.Parent = header
+
+        return header
+    end
+
+    -- UI Elements - Dichiarati come variabili locali separate
+    local AimPartLabel, HeadButton, TorsoR6Button, TorsoR15Button
+    local KeybindButton, HoldButton, ToggleButton, StatusLabel
+    local FOVSizeLabel, SliderBackground, SliderFill, VisibilityButton
+    local ESPToggleButton, BoxToggle, NameToggle, TracerToggle, HealthToggle, RainbowToggle, HealthColorToggle
+    local ColorWheelFrame, ColorSelector, ColorPreview
+    local BoxThicknessLabel, BoxThicknessSliderBG, BoxThicknessSliderFill
+    local NameSizeLabel, NameSizeSliderBG, NameSizeSliderFill
+    local SpeedChangerToggle, WalkSpeedLabel, WalkSpeedSliderBG, WalkSpeedSliderFill, WalkSpeedInput
+    local JumpPowerLabel, JumpPowerSliderBG, JumpPowerSliderFill, JumpPowerInput
+    local FlyToggleButton, FlySpeedLabel, FlySpeedSliderBG, FlySpeedSliderFill, FlySpeedInput, UpButton, DownButton
+    local HitboxToggleButton, HitboxSizeLabel, HitboxSizeSliderBG, HitboxSizeSliderFill, HitboxSizeInput
+    local NoclipToggleButton, UIHideKeybindButton
+
+    -- Creazione delle sezioni UI
+    do
+        -- AIM PART SELECTION
+        createSectionHeader("🎯 AIM PART SELECTION", ContentFrame, 0)
+
+        AimPartLabel = Instance.new("TextLabel")
+        AimPartLabel.Size = UDim2.new(1, 0, 0, 25)
+        AimPartLabel.Position = UDim2.new(0, 0, 0, 45)
+        AimPartLabel.BackgroundTransparency = 1
+        AimPartLabel.Text = "Current: " .. AIM_PART
+        AimPartLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        AimPartLabel.Font = Enum.Font.Gotham
+        AimPartLabel.TextSize = 11
+        AimPartLabel.TextXAlignment = Enum.TextXAlignment.Left
+        AimPartLabel.Parent = ContentFrame
+
+        HeadButton = Instance.new("TextButton")
+        HeadButton.Size = UDim2.new(0, 140, 0, 35)
+        HeadButton.Position = UDim2.new(0, 0, 0, 80)
+        HeadButton.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        HeadButton.BorderSizePixel = 0
+        HeadButton.Text = "HEAD"
+        HeadButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        HeadButton.Font = Enum.Font.GothamBold
+        HeadButton.TextSize = 12
+        HeadButton.Parent = ContentFrame
+
+        local HeadButtonCorner = Instance.new("UICorner")
+        HeadButtonCorner.CornerRadius = UDim.new(0, 6)
+        HeadButtonCorner.Parent = HeadButton
+
+        TorsoR6Button = Instance.new("TextButton")
+        TorsoR6Button.Size = UDim2.new(0, 140, 0, 35)
+        TorsoR6Button.Position = UDim2.new(0, 150, 0, 80)
+        TorsoR6Button.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        TorsoR6Button.BorderSizePixel = 0
+        TorsoR6Button.Text = "TORSO R6"
+        TorsoR6Button.TextColor3 = Color3.fromRGB(150, 150, 150)
+        TorsoR6Button.Font = Enum.Font.GothamBold
+        TorsoR6Button.TextSize = 12
+        TorsoR6Button.Parent = ContentFrame
+
+        local TorsoR6ButtonCorner = Instance.new("UICorner")
+        TorsoR6ButtonCorner.CornerRadius = UDim.new(0, 6)
+        TorsoR6ButtonCorner.Parent = TorsoR6Button
+
+        local TorsoR6ButtonStroke = Instance.new("UIStroke")
+        TorsoR6ButtonStroke.Color = Color3.fromRGB(80, 0, 0)
+        TorsoR6ButtonStroke.Thickness = 1
+        TorsoR6ButtonStroke.Parent = TorsoR6Button
+
+        TorsoR15Button = Instance.new("TextButton")
+        TorsoR15Button.Size = UDim2.new(0, 140, 0, 35)
+        TorsoR15Button.Position = UDim2.new(0, 300, 0, 80)
+        TorsoR15Button.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        TorsoR15Button.BorderSizePixel = 0
+        TorsoR15Button.Text = "TORSO R15"
+        TorsoR15Button.TextColor3 = Color3.fromRGB(150, 150, 150)
+        TorsoR15Button.Font = Enum.Font.GothamBold
+        TorsoR15Button.TextSize = 12
+        TorsoR15Button.Parent = ContentFrame
+
+        local TorsoR15ButtonCorner = Instance.new("UICorner")
+        TorsoR15ButtonCorner.CornerRadius = UDim.new(0, 6)
+        TorsoR15ButtonCorner.Parent = TorsoR15Button
+
+        local TorsoR15ButtonStroke = Instance.new("UIStroke")
+        TorsoR15ButtonStroke.Color = Color3.fromRGB(80, 0, 0)
+        TorsoR15ButtonStroke.Thickness = 1
+        TorsoR15ButtonStroke.Parent = TorsoR15Button
+
+        -- AIMBOT SETTINGS
+        createSectionHeader("⚔️ AIMBOT SETTINGS", ContentFrame, 135)
+
+        KeybindButton = Instance.new("TextButton")
+        KeybindButton.Name = "KeybindButton"
+        KeybindButton.Size = UDim2.new(0, 200, 0, 40)
+        KeybindButton.Position = UDim2.new(0, 0, 0, 180)
+        KeybindButton.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+        KeybindButton.BorderSizePixel = 0
+        KeybindButton.Text = "Keybind: Right Mouse"
+        KeybindButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        KeybindButton.Font = Enum.Font.Gotham
+        KeybindButton.TextSize = 12
+        KeybindButton.Parent = ContentFrame
+
+        local KeybindCorner = Instance.new("UICorner")
+        KeybindCorner.CornerRadius = UDim.new(0, 6)
+        KeybindCorner.Parent = KeybindButton
+
+        local KeybindStroke = Instance.new("UIStroke")
+        KeybindStroke.Color = Color3.fromRGB(80, 0, 0)
+        KeybindStroke.Thickness = 1
+        KeybindStroke.Parent = KeybindButton
+
+        local ModeLabel = Instance.new("TextLabel")
+        ModeLabel.Size = UDim2.new(0, 80, 0, 20)
+        ModeLabel.Position = UDim2.new(0, 210, 0, 185)
+        ModeLabel.BackgroundTransparency = 1
+        ModeLabel.Text = "Mode:"
+        ModeLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        ModeLabel.Font = Enum.Font.Gotham
+        ModeLabel.TextSize = 12
+        ModeLabel.TextXAlignment = Enum.TextXAlignment.Left
+        ModeLabel.Parent = ContentFrame
+
+        HoldButton = Instance.new("TextButton")
+        HoldButton.Name = "HoldButton"
+        HoldButton.Size = UDim2.new(0, 80, 0, 35)
+        HoldButton.Position = UDim2.new(0, 210, 0, 205)
+        HoldButton.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        HoldButton.BorderSizePixel = 0
+        HoldButton.Text = "Hold"
+        HoldButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        HoldButton.Font = Enum.Font.GothamBold
+        HoldButton.TextSize = 12
+        HoldButton.Parent = ContentFrame
+
+        local HoldCorner = Instance.new("UICorner")
+        HoldCorner.CornerRadius = UDim.new(0, 6)
+        HoldCorner.Parent = HoldButton
+
+        ToggleButton = Instance.new("TextButton")
+        ToggleButton.Name = "ToggleButton"
+        ToggleButton.Size = UDim2.new(0, 80, 0, 35)
+        ToggleButton.Position = UDim2.new(0, 300, 0, 205)
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        ToggleButton.BorderSizePixel = 0
+        ToggleButton.Text = "Toggle"
+        ToggleButton.TextColor3 = Color3.fromRGB(150, 150, 150)
+        ToggleButton.Font = Enum.Font.Gotham
+        ToggleButton.TextSize = 12
+        ToggleButton.Parent = ContentFrame
+
+        local ToggleCorner = Instance.new("UICorner")
+        ToggleCorner.CornerRadius = UDim.new(0, 6)
+        ToggleCorner.Parent = ToggleButton
+
+        local ToggleStroke = Instance.new("UIStroke")
+        ToggleStroke.Color = Color3.fromRGB(80, 0, 0)
+        ToggleStroke.Thickness = 1
+        ToggleStroke.Parent = ToggleButton
+
+        StatusLabel = Instance.new("TextLabel")
+        StatusLabel.Size = UDim2.new(1, 0, 0, 25)
+        StatusLabel.Position = UDim2.new(0, 0, 0, 250)
+        StatusLabel.BackgroundTransparency = 1
+        StatusLabel.Text = "Status: ✅ Ready"
+        StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        StatusLabel.Font = Enum.Font.GothamBold
+        StatusLabel.TextSize = 12
+        StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+        StatusLabel.Parent = ContentFrame
+
+        -- FOV SETTINGS
+        createSectionHeader("👁️ FOV SETTINGS", ContentFrame, 285)
+
+        FOVSizeLabel = Instance.new("TextLabel")
+        FOVSizeLabel.Size = UDim2.new(1, 0, 0, 25)
+        FOVSizeLabel.Position = UDim2.new(0, 0, 0, 330)
+        FOVSizeLabel.BackgroundTransparency = 1
+        FOVSizeLabel.Text = "FOV Size: " .. FOV_SIZE
+        FOVSizeLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        FOVSizeLabel.Font = Enum.Font.Gotham
+        FOVSizeLabel.TextSize = 11
+        FOVSizeLabel.TextXAlignment = Enum.TextXAlignment.Left
+        FOVSizeLabel.Parent = ContentFrame
+
+        SliderBackground = Instance.new("Frame")
+        SliderBackground.Size = UDim2.new(1, 0, 0, 25)
+        SliderBackground.Position = UDim2.new(0, 0, 0, 360)
+        SliderBackground.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+        SliderBackground.BorderSizePixel = 0
+        SliderBackground.Parent = ContentFrame
+
+        local SliderBGCorner = Instance.new("UICorner")
+        SliderBGCorner.CornerRadius = UDim.new(0, 6)
+        SliderBGCorner.Parent = SliderBackground
+
+        local SliderBGStroke = Instance.new("UIStroke")
+        SliderBGStroke.Color = Color3.fromRGB(80, 0, 0)
+        SliderBGStroke.Thickness = 1
+        SliderBGStroke.Parent = SliderBackground
+
+        SliderFill = Instance.new("Frame")
+        SliderFill.Size = UDim2.new(FOV_SIZE / 300, 0, 1, 0)
+        SliderFill.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        SliderFill.BorderSizePixel = 0
+        SliderFill.Parent = SliderBackground
+
+        local SliderFillCorner = Instance.new("UICorner")
+        SliderFillCorner.CornerRadius = UDim.new(0, 6)
+        SliderFillCorner.Parent = SliderFill
+
+        local SliderButton = Instance.new("TextButton")
+        SliderButton.Size = UDim2.new(1, 0, 1, 0)
+        SliderButton.BackgroundTransparency = 1
+        SliderButton.Text = ""
+        SliderButton.Parent = SliderBackground
+
+        VisibilityButton = Instance.new("TextButton")
+        VisibilityButton.Size = UDim2.new(0, 200, 0, 40)
+        VisibilityButton.Position = UDim2.new(0, 0, 0, 395)
+        VisibilityButton.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        VisibilityButton.BorderSizePixel = 0
+        VisibilityButton.Text = "FOV Visible: ON"
+        VisibilityButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        VisibilityButton.Font = Enum.Font.GothamBold
+        VisibilityButton.TextSize = 12
+        VisibilityButton.Parent = ContentFrame
+
+        local VisCorner = Instance.new("UICorner")
+        VisCorner.CornerRadius = UDim.new(0, 6)
+        VisCorner.Parent = VisibilityButton
+
+        -- ESP SETTINGS
+        createSectionHeader("👻 ESP SETTINGS", ContentFrame, 450)
+
+        ESPToggleButton = Instance.new("TextButton")
+        ESPToggleButton.Size = UDim2.new(0, 200, 0, 40)
+        ESPToggleButton.Position = UDim2.new(0, 0, 0, 495)
+        ESPToggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        ESPToggleButton.BorderSizePixel = 0
+        ESPToggleButton.Text = "ESP: OFF"
+        ESPToggleButton.TextColor3 = Color3.fromRGB(150, 150, 150)
+        ESPToggleButton.Font = Enum.Font.GothamBold
+        ESPToggleButton.TextSize = 12
+        ESPToggleButton.Parent = ContentFrame
+
+        local ESPToggleCorner = Instance.new("UICorner")
+        ESPToggleCorner.CornerRadius = UDim.new(0, 6)
+        ESPToggleCorner.Parent = ESPToggleButton
+
+        local ESPToggleStroke = Instance.new("UIStroke")
+        ESPToggleStroke.Color = Color3.fromRGB(80, 0, 0)
+        ESPToggleStroke.Thickness = 1
+        ESPToggleStroke.Parent = ESPToggleButton
+
+        -- ESP Components Toggles
+        BoxToggle = Instance.new("TextButton")
+        BoxToggle.Size = UDim2.new(0, 100, 0, 30)
+        BoxToggle.Position = UDim2.new(0, 0, 0, 545)
+        BoxToggle.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        BoxToggle.BorderSizePixel = 0
+        BoxToggle.Text = "Box: ON"
+        BoxToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+        BoxToggle.Font = Enum.Font.GothamBold
+        BoxToggle.TextSize = 11
+        BoxToggle.Parent = ContentFrame
+
+        local BoxToggleCorner = Instance.new("UICorner")
+        BoxToggleCorner.CornerRadius = UDim.new(0, 6)
+        BoxToggleCorner.Parent = BoxToggle
+
+        NameToggle = Instance.new("TextButton")
+        NameToggle.Size = UDim2.new(0, 100, 0, 30)
+        NameToggle.Position = UDim2.new(0, 110, 0, 545)
+        NameToggle.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        NameToggle.BorderSizePixel = 0
+        NameToggle.Text = "Name: ON"
+        NameToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+        NameToggle.Font = Enum.Font.GothamBold
+        NameToggle.TextSize = 11
+        NameToggle.Parent = ContentFrame
+
+        local NameToggleCorner = Instance.new("UICorner")
+        NameToggleCorner.CornerRadius = UDim.new(0, 6)
+        NameToggleCorner.Parent = NameToggle
+
+        TracerToggle = Instance.new("TextButton")
+        TracerToggle.Size = UDim2.new(0, 100, 0, 30)
+        TracerToggle.Position = UDim2.new(0, 220, 0, 545)
+        TracerToggle.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        TracerToggle.BorderSizePixel = 0
+        TracerToggle.Text = "Tracer: ON"
+        TracerToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+        TracerToggle.Font = Enum.Font.GothamBold
+        TracerToggle.TextSize = 11
+        TracerToggle.Parent = ContentFrame
+
+        local TracerToggleCorner = Instance.new("UICorner")
+        TracerToggleCorner.CornerRadius = UDim.new(0, 6)
+        TracerToggleCorner.Parent = TracerToggle
+
+        HealthToggle = Instance.new("TextButton")
+        HealthToggle.Size = UDim2.new(0, 100, 0, 30)
+        HealthToggle.Position = UDim2.new(0, 0, 0, 585)
+        HealthToggle.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        HealthToggle.BorderSizePixel = 0
+        HealthToggle.Text = "Health: ON"
+        HealthToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+        HealthToggle.Font = Enum.Font.GothamBold
+        HealthToggle.TextSize = 11
+        HealthToggle.Parent = ContentFrame
+
+        local HealthToggleCorner = Instance.new("UICorner")
+        HealthToggleCorner.CornerRadius = UDim.new(0, 6)
+        HealthToggleCorner.Parent = HealthToggle
+
+        RainbowToggle = Instance.new("TextButton")
+        RainbowToggle.Size = UDim2.new(0, 100, 0, 30)
+        RainbowToggle.Position = UDim2.new(0, 110, 0, 585)
+        RainbowToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        RainbowToggle.BorderSizePixel = 0
+        RainbowToggle.Text = "Rainbow: OFF"
+        RainbowToggle.TextColor3 = Color3.fromRGB(150, 150, 150)
+        RainbowToggle.Font = Enum.Font.GothamBold
+        RainbowToggle.TextSize = 11
+        RainbowToggle.Parent = ContentFrame
+
+        local RainbowToggleCorner = Instance.new("UICorner")
+        RainbowToggleCorner.CornerRadius = UDim.new(0, 6)
+        RainbowToggleCorner.Parent = RainbowToggle
+
+        local RainbowToggleStroke = Instance.new("UIStroke")
+        RainbowToggleStroke.Color = Color3.fromRGB(80, 0, 0)
+        RainbowToggleStroke.Thickness = 1
+        RainbowToggleStroke.Parent = RainbowToggle
+
+        HealthColorToggle = Instance.new("TextButton")
+        HealthColorToggle.Size = UDim2.new(0, 100, 0, 30)
+        HealthColorToggle.Position = UDim2.new(0, 220, 0, 585)
+        HealthColorToggle.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        HealthColorToggle.BorderSizePixel = 0
+        HealthColorToggle.Text = "Health: Match"
+        HealthColorToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+        HealthColorToggle.Font = Enum.Font.GothamBold
+        HealthColorToggle.TextSize = 11
+        HealthColorToggle.Parent = ContentFrame
+
+        local HealthColorToggleCorner = Instance.new("UICorner")
+        HealthColorToggleCorner.CornerRadius = UDim.new(0, 6)
+        HealthColorToggleCorner.Parent = HealthColorToggle
+
+        -- Color Wheel
+        local ColorWheelLabel = Instance.new("TextLabel")
+        ColorWheelLabel.Size = UDim2.new(1, 0, 0, 25)
+        ColorWheelLabel.Position = UDim2.new(0, 0, 0, 630)
+        ColorWheelLabel.BackgroundTransparency = 1
+        ColorWheelLabel.Text = "ESP Color Wheel"
+        ColorWheelLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        ColorWheelLabel.Font = Enum.Font.Gotham
+        ColorWheelLabel.TextSize = 11
+        ColorWheelLabel.TextXAlignment = Enum.TextXAlignment.Left
+        ColorWheelLabel.Parent = ContentFrame
+
+        ColorWheelFrame = Instance.new("Frame")
+        ColorWheelFrame.Size = UDim2.new(0, 140, 0, 140)
+        ColorWheelFrame.Position = UDim2.new(0, 0, 0, 660)
+        ColorWheelFrame.BackgroundTransparency = 1
+        ColorWheelFrame.Parent = ContentFrame
+
+        local ColorWheel = Instance.new("ImageLabel")
+        ColorWheel.Size = UDim2.new(1, 0, 1, 0)
+        ColorWheel.BackgroundTransparency = 1
+        ColorWheel.Image = "rbxassetid://698052001"
+        ColorWheel.Parent = ColorWheelFrame
+
+        local ColorWheelBorder = Instance.new("UIStroke")
+        ColorWheelBorder.Color = Color3.fromRGB(80, 0, 0)
+        ColorWheelBorder.Thickness = 2
+        ColorWheelBorder.Parent = ColorWheel
+
+        ColorSelector = Instance.new("Frame")
+        ColorSelector.Size = UDim2.new(0, 12, 0, 12)
+        ColorSelector.Position = UDim2.new(0.5, -6, 0.5, -6)
+        ColorSelector.BackgroundColor3 = Color3.new(1, 1, 1)
+        ColorSelector.BorderColor3 = Color3.new(0, 0, 0)
+        ColorSelector.BorderSizePixel = 2
+        ColorSelector.Parent = ColorWheelFrame
+
+        local ColorSelectorCorner = Instance.new("UICorner")
+        ColorSelectorCorner.CornerRadius = UDim.new(1, 0)
+        ColorSelectorCorner.Parent = ColorSelector
+
+        -- Color Preview
+        local ColorPreviewLabel = Instance.new("TextLabel")
+        ColorPreviewLabel.Size = UDim2.new(0, 100, 0, 25)
+        ColorPreviewLabel.Position = UDim2.new(0, 160, 0, 660)
+        ColorPreviewLabel.BackgroundTransparency = 1
+        ColorPreviewLabel.Text = "Color Preview"
+        ColorPreviewLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        ColorPreviewLabel.Font = Enum.Font.Gotham
+        ColorPreviewLabel.TextSize = 11
+        ColorPreviewLabel.Parent = ContentFrame
+
+        ColorPreview = Instance.new("Frame")
+        ColorPreview.Size = UDim2.new(0, 100, 0, 50)
+        ColorPreview.Position = UDim2.new(0, 160, 0, 690)
+        ColorPreview.BackgroundColor3 = ESP_COLOR
+        ColorPreview.BorderSizePixel = 0
+        ColorPreview.Parent = ContentFrame
+
+        local ColorPreviewCorner = Instance.new("UICorner")
+        ColorPreviewCorner.CornerRadius = UDim.new(0, 6)
+        ColorPreviewCorner.Parent = ColorPreview
+
+        local ColorPreviewStroke = Instance.new("UIStroke")
+        ColorPreviewStroke.Color = Color3.fromRGB(80, 0, 0)
+        ColorPreviewStroke.Thickness = 2
+        ColorPreviewStroke.Parent = ColorPreview
+
+        -- ESP Thickness Settings
+        BoxThicknessLabel = Instance.new("TextLabel")
+        BoxThicknessLabel.Size = UDim2.new(1, 0, 0, 25)
+        BoxThicknessLabel.Position = UDim2.new(0, 0, 0, 820)
+        BoxThicknessLabel.BackgroundTransparency = 1
+        BoxThicknessLabel.Text = "Box Thickness: " .. ESP_SETTINGS.BoxThickness
+        BoxThicknessLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        BoxThicknessLabel.Font = Enum.Font.Gotham
+        BoxThicknessLabel.TextSize = 11
+        BoxThicknessLabel.TextXAlignment = Enum.TextXAlignment.Left
+        BoxThicknessLabel.Parent = ContentFrame
+
+        BoxThicknessSliderBG = Instance.new("Frame")
+        BoxThicknessSliderBG.Size = UDim2.new(1, 0, 0, 25)
+        BoxThicknessSliderBG.Position = UDim2.new(0, 0, 0, 850)
+        BoxThicknessSliderBG.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+        BoxThicknessSliderBG.BorderSizePixel = 0
+        BoxThicknessSliderBG.Parent = ContentFrame
+
+        local BoxThicknessBGCorner = Instance.new("UICorner")
+        BoxThicknessBGCorner.CornerRadius = UDim.new(0, 6)
+        BoxThicknessBGCorner.Parent = BoxThicknessSliderBG
+
+        local BoxThicknessBGStroke = Instance.new("UIStroke")
+        BoxThicknessBGStroke.Color = Color3.fromRGB(80, 0, 0)
+        BoxThicknessBGStroke.Thickness = 1
+        BoxThicknessBGStroke.Parent = BoxThicknessSliderBG
+
+        BoxThicknessSliderFill = Instance.new("Frame")
+        BoxThicknessSliderFill.Size = UDim2.new((ESP_SETTINGS.BoxThickness - 1) / 4, 0, 1, 0)
+        BoxThicknessSliderFill.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        BoxThicknessSliderFill.BorderSizePixel = 0
+        BoxThicknessSliderFill.Parent = BoxThicknessSliderBG
+
+        local BoxThicknessFillCorner = Instance.new("UICorner")
+        BoxThicknessFillCorner.CornerRadius = UDim.new(0, 6)
+        BoxThicknessFillCorner.Parent = BoxThicknessSliderFill
+
+        local BoxThicknessSliderButton = Instance.new("TextButton")
+        BoxThicknessSliderButton.Size = UDim2.new(1, 0, 1, 0)
+        BoxThicknessSliderButton.BackgroundTransparency = 1
+        BoxThicknessSliderButton.Text = ""
+        BoxThicknessSliderButton.Parent = BoxThicknessSliderBG
+
+        -- Name Size Slider
+        NameSizeLabel = Instance.new("TextLabel")
+        NameSizeLabel.Size = UDim2.new(1, 0, 0, 25)
+        NameSizeLabel.Position = UDim2.new(0, 0, 0, 890)
+        NameSizeLabel.BackgroundTransparency = 1
+        NameSizeLabel.Text = "Name Size: " .. ESP_SETTINGS.NameSize
+        NameSizeLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        NameSizeLabel.Font = Enum.Font.Gotham
+        NameSizeLabel.TextSize = 11
+        NameSizeLabel.TextXAlignment = Enum.TextXAlignment.Left
+        NameSizeLabel.Parent = ContentFrame
+
+        NameSizeSliderBG = Instance.new("Frame")
+        NameSizeSliderBG.Size = UDim2.new(1, 0, 0, 25)
+        NameSizeSliderBG.Position = UDim2.new(0, 0, 0, 920)
+        NameSizeSliderBG.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+        NameSizeSliderBG.BorderSizePixel = 0
+        NameSizeSliderBG.Parent = ContentFrame
+
+        local NameSizeBGCorner = Instance.new("UICorner")
+        NameSizeBGCorner.CornerRadius = UDim.new(0, 6)
+        NameSizeBGCorner.Parent = NameSizeSliderBG
+
+        local NameSizeBGStroke = Instance.new("UIStroke")
+        NameSizeBGStroke.Color = Color3.fromRGB(80, 0, 0)
+        NameSizeBGStroke.Thickness = 1
+        NameSizeBGStroke.Parent = NameSizeSliderBG
+
+        NameSizeSliderFill = Instance.new("Frame")
+        NameSizeSliderFill.Size = UDim2.new((ESP_SETTINGS.NameSize - 10) / 20, 0, 1, 0)
+        NameSizeSliderFill.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        NameSizeSliderFill.BorderSizePixel = 0
+        NameSizeSliderFill.Parent = NameSizeSliderBG
+
+        local NameSizeFillCorner = Instance.new("UICorner")
+        NameSizeFillCorner.CornerRadius = UDim.new(0, 6)
+        NameSizeFillCorner.Parent = NameSizeSliderFill
+
+        local NameSizeSliderButton = Instance.new("TextButton")
+        NameSizeSliderButton.Size = UDim2.new(1, 0, 1, 0)
+        NameSizeSliderButton.BackgroundTransparency = 1
+        NameSizeSliderButton.Text = ""
+        NameSizeSliderButton.Parent = NameSizeSliderBG
+
+        -- SPEED CHANGER SECTION
+        createSectionHeader("🚀 SPEED CHANGER", ContentFrame, 960)
+
+        SpeedChangerToggle = Instance.new("TextButton")
+        SpeedChangerToggle.Size = UDim2.new(0, 200, 0, 40)
+        SpeedChangerToggle.Position = UDim2.new(0, 0, 0, 1005)
+        SpeedChangerToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        SpeedChangerToggle.BorderSizePixel = 0
+        SpeedChangerToggle.Text = "Speed Changer: OFF"
+        SpeedChangerToggle.TextColor3 = Color3.fromRGB(150, 150, 150)
+        SpeedChangerToggle.Font = Enum.Font.GothamBold
+        SpeedChangerToggle.TextSize = 12
+        SpeedChangerToggle.Parent = ContentFrame
+
+        local SpeedChangerToggleCorner = Instance.new("UICorner")
+        SpeedChangerToggleCorner.CornerRadius = UDim.new(0, 6)
+        SpeedChangerToggleCorner.Parent = SpeedChangerToggle
+
+        local SpeedChangerToggleStroke = Instance.new("UIStroke")
+        SpeedChangerToggleStroke.Color = Color3.fromRGB(80, 0, 0)
+        SpeedChangerToggleStroke.Thickness = 1
+        SpeedChangerToggleStroke.Parent = SpeedChangerToggle
+
+        -- Walk Speed
+        WalkSpeedLabel = Instance.new("TextLabel")
+        WalkSpeedLabel.Size = UDim2.new(1, 0, 0, 25)
+        WalkSpeedLabel.Position = UDim2.new(0, 0, 0, 1055)
+        WalkSpeedLabel.BackgroundTransparency = 1
+        WalkSpeedLabel.Text = "Walk Speed: " .. WALK_SPEED
+        WalkSpeedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        WalkSpeedLabel.Font = Enum.Font.Gotham
+        WalkSpeedLabel.TextSize = 11
+        WalkSpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+        WalkSpeedLabel.Parent = ContentFrame
+
+        WalkSpeedSliderBG = Instance.new("Frame")
+        WalkSpeedSliderBG.Size = UDim2.new(1, 0, 0, 25)
+        WalkSpeedSliderBG.Position = UDim2.new(0, 0, 0, 1085)
+        WalkSpeedSliderBG.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+        WalkSpeedSliderBG.BorderSizePixel = 0
+        WalkSpeedSliderBG.Parent = ContentFrame
+
+        local WalkSpeedBGCorner = Instance.new("UICorner")
+        WalkSpeedBGCorner.CornerRadius = UDim.new(0, 6)
+        WalkSpeedBGCorner.Parent = WalkSpeedSliderBG
+
+        local WalkSpeedBGStroke = Instance.new("UIStroke")
+        WalkSpeedBGStroke.Color = Color3.fromRGB(80, 0, 0)
+        WalkSpeedBGStroke.Thickness = 1
+        WalkSpeedBGStroke.Parent = WalkSpeedSliderBG
+
+        WalkSpeedSliderFill = Instance.new("Frame")
+        WalkSpeedSliderFill.Size = UDim2.new((WALK_SPEED - 1) / 199, 0, 1, 0)
+        WalkSpeedSliderFill.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        WalkSpeedSliderFill.BorderSizePixel = 0
+        WalkSpeedSliderFill.Parent = WalkSpeedSliderBG
+
+        local WalkSpeedFillCorner = Instance.new("UICorner")
+        WalkSpeedFillCorner.CornerRadius = UDim.new(0, 6)
+        WalkSpeedFillCorner.Parent = WalkSpeedSliderFill
+
+        local WalkSpeedSliderButton = Instance.new("TextButton")
+        WalkSpeedSliderButton.Size = UDim2.new(1, 0, 1, 0)
+        WalkSpeedSliderButton.BackgroundTransparency = 1
+        WalkSpeedSliderButton.Text = ""
+        WalkSpeedSliderButton.Parent = WalkSpeedSliderBG
+
+        WalkSpeedInput = Instance.new("TextBox")
+        WalkSpeedInput.Size = UDim2.new(0, 60, 0, 25)
+        WalkSpeedInput.Position = UDim2.new(1, 10, 0, 0)
+        WalkSpeedInput.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+        WalkSpeedInput.BorderSizePixel = 0
+        WalkSpeedInput.Text = tostring(WALK_SPEED)
+        WalkSpeedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+        WalkSpeedInput.Font = Enum.Font.Gotham
+        WalkSpeedInput.TextSize = 11
+        WalkSpeedInput.PlaceholderText = "Speed"
+        WalkSpeedInput.Parent = WalkSpeedSliderBG
+
+        local WalkSpeedInputCorner = Instance.new("UICorner")
+        WalkSpeedInputCorner.CornerRadius = UDim.new(0, 6)
+        WalkSpeedInputCorner.Parent = WalkSpeedInput
+
+        local WalkSpeedInputStroke = Instance.new("UIStroke")
+        WalkSpeedInputStroke.Color = Color3.fromRGB(80, 0, 0)
+        WalkSpeedInputStroke.Thickness = 1
+        WalkSpeedInputStroke.Parent = WalkSpeedInput
+
+        -- Jump Power
+        JumpPowerLabel = Instance.new("TextLabel")
+        JumpPowerLabel.Size = UDim2.new(1, 0, 0, 25)
+        JumpPowerLabel.Position = UDim2.new(0, 0, 0, 1120)
+        JumpPowerLabel.BackgroundTransparency = 1
+        JumpPowerLabel.Text = "Jump Power: " .. JUMP_POWER
+        JumpPowerLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        JumpPowerLabel.Font = Enum.Font.Gotham
+        JumpPowerLabel.TextSize = 11
+        JumpPowerLabel.TextXAlignment = Enum.TextXAlignment.Left
+        JumpPowerLabel.Parent = ContentFrame
+
+        JumpPowerSliderBG = Instance.new("Frame")
+        JumpPowerSliderBG.Size = UDim2.new(1, 0, 0, 25)
+        JumpPowerSliderBG.Position = UDim2.new(0, 0, 0, 1150)
+        JumpPowerSliderBG.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+        JumpPowerSliderBG.BorderSizePixel = 0
+        JumpPowerSliderBG.Parent = ContentFrame
+
+        local JumpPowerBGCorner = Instance.new("UICorner")
+        JumpPowerBGCorner.CornerRadius = UDim.new(0, 6)
+        JumpPowerBGCorner.Parent = JumpPowerSliderBG
+
+        local JumpPowerBGStroke = Instance.new("UIStroke")
+        JumpPowerBGStroke.Color = Color3.fromRGB(80, 0, 0)
+        JumpPowerBGStroke.Thickness = 1
+        JumpPowerBGStroke.Parent = JumpPowerSliderBG
+
+        JumpPowerSliderFill = Instance.new("Frame")
+        JumpPowerSliderFill.Size = UDim2.new((JUMP_POWER - 1) / 199, 0, 1, 0)
+        JumpPowerSliderFill.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        JumpPowerSliderFill.BorderSizePixel = 0
+        JumpPowerSliderFill.Parent = JumpPowerSliderBG
+
+        local JumpPowerFillCorner = Instance.new("UICorner")
+        JumpPowerFillCorner.CornerRadius = UDim.new(0, 6)
+        JumpPowerFillCorner.Parent = JumpPowerSliderFill
+
+        local JumpPowerSliderButton = Instance.new("TextButton")
+        JumpPowerSliderButton.Size = UDim2.new(1, 0, 1, 0)
+        JumpPowerSliderButton.BackgroundTransparency = 1
+        JumpPowerSliderButton.Text = ""
+        JumpPowerSliderButton.Parent = JumpPowerSliderBG
+
+        JumpPowerInput = Instance.new("TextBox")
+        JumpPowerInput.Size = UDim2.new(0, 60, 0, 25)
+        JumpPowerInput.Position = UDim2.new(1, 10, 0, 0)
+        JumpPowerInput.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+        JumpPowerInput.BorderSizePixel = 0
+        JumpPowerInput.Text = tostring(JUMP_POWER)
+        JumpPowerInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+        JumpPowerInput.Font = Enum.Font.Gotham
+        JumpPowerInput.TextSize = 11
+        JumpPowerInput.PlaceholderText = "Jump"
+        JumpPowerInput.Parent = JumpPowerSliderBG
+
+        local JumpPowerInputCorner = Instance.new("UICorner")
+        JumpPowerInputCorner.CornerRadius = UDim.new(0, 6)
+        JumpPowerInputCorner.Parent = JumpPowerInput
+
+        local JumpPowerInputStroke = Instance.new("UIStroke")
+        JumpPowerInputStroke.Color = Color3.fromRGB(80, 0, 0)
+        JumpPowerInputStroke.Thickness = 1
+        JumpPowerInputStroke.Parent = JumpPowerInput
+
+        -- FLY SYSTEM SECTION
+        createSectionHeader("👻 FLY SYSTEM", ContentFrame, 1200)
+
+        FlyToggleButton = Instance.new("TextButton")
+        FlyToggleButton.Size = UDim2.new(0, 200, 0, 40)
+        FlyToggleButton.Position = UDim2.new(0, 0, 0, 1245)
+        FlyToggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        FlyToggleButton.BorderSizePixel = 0
+        FlyToggleButton.Text = "FLY: OFF"
+        FlyToggleButton.TextColor3 = Color3.fromRGB(150, 150, 150)
+        FlyToggleButton.Font = Enum.Font.GothamBold
+        FlyToggleButton.TextSize = 12
+        FlyToggleButton.Parent = ContentFrame
+
+        local FlyToggleCorner = Instance.new("UICorner")
+        FlyToggleCorner.CornerRadius = UDim.new(0, 6)
+        FlyToggleCorner.Parent = FlyToggleButton
+
+        local FlyToggleStroke = Instance.new("UIStroke")
+        FlyToggleStroke.Color = Color3.fromRGB(80, 0, 0)
+        FlyToggleStroke.Thickness = 1
+        FlyToggleStroke.Parent = FlyToggleButton
+
+        -- Fly Speed
+        FlySpeedLabel = Instance.new("TextLabel")
+        FlySpeedLabel.Size = UDim2.new(1, 0, 0, 25)
+        FlySpeedLabel.Position = UDim2.new(0, 0, 0, 1295)
+        FlySpeedLabel.BackgroundTransparency = 1
+        FlySpeedLabel.Text = "Fly Speed: " .. flySpeed
+        FlySpeedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        FlySpeedLabel.Font = Enum.Font.Gotham
+        FlySpeedLabel.TextSize = 11
+        FlySpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+        FlySpeedLabel.Parent = ContentFrame
+
+        FlySpeedSliderBG = Instance.new("Frame")
+        FlySpeedSliderBG.Size = UDim2.new(1, 0, 0, 25)
+        FlySpeedSliderBG.Position = UDim2.new(0, 0, 0, 1325)
+        FlySpeedSliderBG.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+        FlySpeedSliderBG.BorderSizePixel = 0
+        FlySpeedSliderBG.Parent = ContentFrame
+
+        local FlySpeedBGCorner = Instance.new("UICorner")
+        FlySpeedBGCorner.CornerRadius = UDim.new(0, 6)
+        FlySpeedBGCorner.Parent = FlySpeedSliderBG
+
+        local FlySpeedBGStroke = Instance.new("UIStroke")
+        FlySpeedBGStroke.Color = Color3.fromRGB(80, 0, 0)
+        FlySpeedBGStroke.Thickness = 1
+        FlySpeedBGStroke.Parent = FlySpeedSliderBG
+
+        FlySpeedSliderFill = Instance.new("Frame")
+        FlySpeedSliderFill.Size = UDim2.new((flySpeed - 10) / 90, 0, 1, 0)
+        FlySpeedSliderFill.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        FlySpeedSliderFill.BorderSizePixel = 0
+        FlySpeedSliderFill.Parent = FlySpeedSliderBG
+
+        local FlySpeedFillCorner = Instance.new("UICorner")
+        FlySpeedFillCorner.CornerRadius = UDim.new(0, 6)
+        FlySpeedFillCorner.Parent = FlySpeedSliderFill
+
+        local FlySpeedSliderButton = Instance.new("TextButton")
+        FlySpeedSliderButton.Size = UDim2.new(1, 0, 1, 0)
+        FlySpeedSliderButton.BackgroundTransparency = 1
+        FlySpeedSliderButton.Text = ""
+        FlySpeedSliderButton.Parent = FlySpeedSliderBG
+
+        FlySpeedInput = Instance.new("TextBox")
+        FlySpeedInput.Size = UDim2.new(0, 60, 0, 25)
+        FlySpeedInput.Position = UDim2.new(1, 10, 0, 0)
+        FlySpeedInput.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+        FlySpeedInput.BorderSizePixel = 0
+        FlySpeedInput.Text = tostring(flySpeed)
+        FlySpeedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+        FlySpeedInput.Font = Enum.Font.Gotham
+        FlySpeedInput.TextSize = 11
+        FlySpeedInput.PlaceholderText = "Speed"
+        FlySpeedInput.Parent = FlySpeedSliderBG
+
+        local FlySpeedInputCorner = Instance.new("UICorner")
+        FlySpeedInputCorner.CornerRadius = UDim.new(0, 6)
+        FlySpeedInputCorner.Parent = FlySpeedInput
+
+        local FlySpeedInputStroke = Instance.new("UIStroke")
+        FlySpeedInputStroke.Color = Color3.fromRGB(80, 0, 0)
+        FlySpeedInputStroke.Thickness = 1
+        FlySpeedInputStroke.Parent = FlySpeedInput
+
+        -- Up/Down Controls
+        UpButton = Instance.new("TextButton")
+        UpButton.Size = UDim2.new(0, 100, 0, 30)
+        UpButton.Position = UDim2.new(0, 0, 0, 1365)
+        UpButton.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        UpButton.BorderSizePixel = 0
+        UpButton.Text = "UP"
+        UpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        UpButton.Font = Enum.Font.GothamBold
+        UpButton.TextSize = 11
+        UpButton.Parent = ContentFrame
+
+        local UpButtonCorner = Instance.new("UICorner")
+        UpButtonCorner.CornerRadius = UDim.new(0, 6)
+        UpButtonCorner.Parent = UpButton
+
+        DownButton = Instance.new("TextButton")
+        DownButton.Size = UDim2.new(0, 100, 0, 30)
+        DownButton.Position = UDim2.new(0, 110, 0, 1365)
+        DownButton.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        DownButton.BorderSizePixel = 0
+        DownButton.Text = "DOWN"
+        DownButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        DownButton.Font = Enum.Font.GothamBold
+        DownButton.TextSize = 11
+        DownButton.Parent = ContentFrame
+
+        local DownButtonCorner = Instance.new("UICorner")
+        DownButtonCorner.CornerRadius = UDim.new(0, 6)
+        DownButtonCorner.Parent = DownButton
+
+        -- HITBOX EXPANDER SECTION
+        createSectionHeader("🎯 HITBOX EXPANDER", ContentFrame, 1410)
+
+        HitboxToggleButton = Instance.new("TextButton")
+        HitboxToggleButton.Size = UDim2.new(0, 200, 0, 40)
+        HitboxToggleButton.Position = UDim2.new(0, 0, 0, 1455)
+        HitboxToggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        HitboxToggleButton.BorderSizePixel = 0
+        HitboxToggleButton.Text = "Hitbox Expander: OFF"
+        HitboxToggleButton.TextColor3 = Color3.fromRGB(150, 150, 150)
+        HitboxToggleButton.Font = Enum.Font.GothamBold
+        HitboxToggleButton.TextSize = 12
+        HitboxToggleButton.Parent = ContentFrame
+
+        local HitboxToggleCorner = Instance.new("UICorner")
+        HitboxToggleCorner.CornerRadius = UDim.new(0, 6)
+        HitboxToggleCorner.Parent = HitboxToggleButton
+
+        local HitboxToggleStroke = Instance.new("UIStroke")
+        HitboxToggleStroke.Color = Color3.fromRGB(80, 0, 0)
+        HitboxToggleStroke.Thickness = 1
+        HitboxToggleStroke.Parent = HitboxToggleButton
+
+        -- Hitbox Size
+        HitboxSizeLabel = Instance.new("TextLabel")
+        HitboxSizeLabel.Size = UDim2.new(1, 0, 0, 25)
+        HitboxSizeLabel.Position = UDim2.new(0, 0, 0, 1505)
+        HitboxSizeLabel.BackgroundTransparency = 1
+        HitboxSizeLabel.Text = "Hitbox Size: " .. HITBOX_SIZE
+        HitboxSizeLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        HitboxSizeLabel.Font = Enum.Font.Gotham
+        HitboxSizeLabel.TextSize = 11
+        HitboxSizeLabel.TextXAlignment = Enum.TextXAlignment.Left
+        HitboxSizeLabel.Parent = ContentFrame
+
+        HitboxSizeSliderBG = Instance.new("Frame")
+        HitboxSizeSliderBG.Size = UDim2.new(1, 0, 0, 25)
+        HitboxSizeSliderBG.Position = UDim2.new(0, 0, 0, 1535)
+        HitboxSizeSliderBG.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+        HitboxSizeSliderBG.BorderSizePixel = 0
+        HitboxSizeSliderBG.Parent = ContentFrame
+
+        local HitboxSizeBGCorner = Instance.new("UICorner")
+        HitboxSizeBGCorner.CornerRadius = UDim.new(0, 6)
+        HitboxSizeBGCorner.Parent = HitboxSizeSliderBG
+
+        local HitboxSizeBGStroke = Instance.new("UIStroke")
+        HitboxSizeBGStroke.Color = Color3.fromRGB(80, 0, 0)
+        HitboxSizeBGStroke.Thickness = 1
+        HitboxSizeBGStroke.Parent = HitboxSizeSliderBG
+
+        HitboxSizeSliderFill = Instance.new("Frame")
+        HitboxSizeSliderFill.Size = UDim2.new((HITBOX_SIZE - 1) / 49, 0, 1, 0)
+        HitboxSizeSliderFill.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        HitboxSizeSliderFill.BorderSizePixel = 0
+        HitboxSizeSliderFill.Parent = HitboxSizeSliderBG
+
+        local HitboxSizeFillCorner = Instance.new("UICorner")
+        HitboxSizeFillCorner.CornerRadius = UDim.new(0, 6)
+        HitboxSizeFillCorner.Parent = HitboxSizeSliderFill
+
+        local HitboxSizeSliderButton = Instance.new("TextButton")
+        HitboxSizeSliderButton.Size = UDim2.new(1, 0, 1, 0)
+        HitboxSizeSliderButton.BackgroundTransparency = 1
+        HitboxSizeSliderButton.Text = ""
+        HitboxSizeSliderButton.Parent = HitboxSizeSliderBG
+
+        HitboxSizeInput = Instance.new("TextBox")
+        HitboxSizeInput.Size = UDim2.new(0, 60, 0, 25)
+        HitboxSizeInput.Position = UDim2.new(1, 10, 0, 0)
+        HitboxSizeInput.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+        HitboxSizeInput.BorderSizePixel = 0
+        HitboxSizeInput.Text = tostring(HITBOX_SIZE)
+        HitboxSizeInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+        HitboxSizeInput.Font = Enum.Font.Gotham
+        HitboxSizeInput.TextSize = 11
+        HitboxSizeInput.PlaceholderText = "Size"
+        HitboxSizeInput.Parent = HitboxSizeSliderBG
+
+        local HitboxSizeInputCorner = Instance.new("UICorner")
+        HitboxSizeInputCorner.CornerRadius = UDim.new(0, 6)
+        HitboxSizeInputCorner.Parent = HitboxSizeInput
+
+        local HitboxSizeInputStroke = Instance.new("UIStroke")
+        HitboxSizeInputStroke.Color = Color3.fromRGB(80, 0, 0)
+        HitboxSizeInputStroke.Thickness = 1
+        HitboxSizeInputStroke.Parent = HitboxSizeInput
+
+        -- NOCLIP SECTION
+        createSectionHeader("👻 NOCLIP", ContentFrame, 1575)
+
+        NoclipToggleButton = Instance.new("TextButton")
+        NoclipToggleButton.Size = UDim2.new(0, 200, 0, 40)
+        NoclipToggleButton.Position = UDim2.new(0, 0, 0, 1620)
+        NoclipToggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        NoclipToggleButton.BorderSizePixel = 0
+        NoclipToggleButton.Text = "Noclip: OFF"
+        NoclipToggleButton.TextColor3 = Color3.fromRGB(150, 150, 150)
+        NoclipToggleButton.Font = Enum.Font.GothamBold
+        NoclipToggleButton.TextSize = 12
+        NoclipToggleButton.Parent = ContentFrame
+
+        local NoclipToggleCorner = Instance.new("UICorner")
+        NoclipToggleCorner.CornerRadius = UDim.new(0, 6)
+        NoclipToggleCorner.Parent = NoclipToggleButton
+
+        local NoclipToggleStroke = Instance.new("UIStroke")
+        NoclipToggleStroke.Color = Color3.fromRGB(80, 0, 0)
+        NoclipToggleStroke.Thickness = 1
+        NoclipToggleStroke.Parent = NoclipToggleButton
+
+        -- UI HIDE KEYBIND SECTION
+        createSectionHeader("⚙️ UI SETTINGS", ContentFrame, 1680)
+
+        UIHideKeybindButton = Instance.new("TextButton")
+        UIHideKeybindButton.Size = UDim2.new(0, 200, 0, 40)
+        UIHideKeybindButton.Position = UDim2.new(0, 0, 0, 1725)
+        UIHideKeybindButton.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+        UIHideKeybindButton.BorderSizePixel = 0
+        UIHideKeybindButton.Text = "UI Hide Key: RightShift"
+        UIHideKeybindButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        UIHideKeybindButton.Font = Enum.Font.Gotham
+        UIHideKeybindButton.TextSize = 12
+        UIHideKeybindButton.Parent = ContentFrame
+
+        local UIHideKeybindCorner = Instance.new("UICorner")
+        UIHideKeybindCorner.CornerRadius = UDim.new(0, 6)
+        UIHideKeybindCorner.Parent = UIHideKeybindButton
+
+        local UIHideKeybindStroke = Instance.new("UIStroke")
+        UIHideKeybindStroke.Color = Color3.fromRGB(80, 0, 0)
+        UIHideKeybindStroke.Thickness = 1
+        UIHideKeybindStroke.Parent = UIHideKeybindButton
+    end
+
+    MoonlightGUI.Parent = PlayerGui
+
+    -- FUNZIONE MIGLIORATA: Ottiene la parte del corpo corretta in base alla selezione
+    local function getAimPart(character)
+        if AIM_PART == "Head" then
+            return character:FindFirstChild("Head")
+        elseif AIM_PART == "TorsoR6" then
+            return character:FindFirstChild("Torso")
+        elseif AIM_PART == "TorsoR15" then
+            local upperTorso = character:FindFirstChild("UpperTorso")
+            local lowerTorso = character:FindFirstChild("LowerTorso")
+            -- Se entrambi i torso esistono, calcola la posizione centrale
+            if upperTorso and lowerTorso then
+                return upperTorso
+            elseif upperTorso then
+                return upperTorso
+            elseif lowerTorso then
+                return lowerTorso
+            else
+                return character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso") or character:FindFirstChild("Head")
+            end
+        end
+        return character:FindFirstChild("Head") -- Fallback
+    end
+
+    -- ESP Functions
+    local function updateAllESP()
+        for player, data in pairs(ESPObjects) do
+            if data then
+                hideAll(data)
+            end
+        end
+    end
+
+    local function toggleESP(enabled)
+        ESP_ENABLED = enabled
+        if not enabled then
+            for _, data in pairs(ESPObjects) do
+                hideAll(data)
+            end
+        else
+            updateESP()
+        end
+    end
+
+    -- Player Events
+    local conn1 = Players.PlayerRemoving:Connect(function(player)
+        if ESPObjects[player] then
+            for _, obj in pairs(ESPObjects[player]) do
+                obj:Remove()
+            end
+            ESPObjects[player] = nil
+        end
+    end)
+    table.insert(allConnections, conn1)
+
+    -- FOV Functions
+    local function updateFOVPosition()
+        FOVCircle.Position = Vector2.new(Mouse.X, Mouse.Y + 36)
+    end
+
+    -- SISTEMA AIMBOT MIGLIORATO con selezione parte del corpo
+    local function getClosestTargetInFOV()
+        local closestTarget = nil
+        local closestDistance = FOV_SIZE + 1
+        local mousePos = Vector2.new(Mouse.X, Mouse.Y)
+
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                local character = player.Character
+                if character then
+                    local aimPart = getAimPart(character)
+                    if aimPart and aimPart:IsA("BasePart") then
+                        local partPos, onScreen = Camera:WorldToViewportPoint(aimPart.Position)
+                        
+                        if onScreen then
+                            local screenPos = Vector2.new(partPos.X, partPos.Y)
+                            local distance = (screenPos - mousePos).Magnitude
+                            
+                            if distance <= FOV_SIZE and distance < closestDistance then
+                                closestDistance = distance
+                                closestTarget = aimPart
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        return closestTarget
+    end
+
+    local AIM_COOLDOWN = 0.01
+
+    local function aimAtClosestTarget()
+        if not scriptActive then return end
+        
+        if tick() - lastAimTime < AIM_COOLDOWN then
+            return
+        end
+        lastAimTime = tick()
+        
+        local targetPart = getClosestTargetInFOV()
+        
+        if targetPart and targetPart.Parent then
+            currentTarget = targetPart
+            
+            local partScreenPos, onScreen = Camera:WorldToScreenPoint(targetPart.Position)
+            
+            if onScreen then
+                local deltaX = partScreenPos.X - Mouse.X
+                local deltaY = partScreenPos.Y - Mouse.Y
+                
+                mousemoverel(deltaX, deltaY)
+                
+                FOVCircle.Color = Color3.fromRGB(220, 70, 70)
+            else
+                FOVCircle.Color = Color3.fromRGB(139, 0, 0)
+                currentTarget = nil
+            end
+        else
+            FOVCircle.Color = Color3.fromRGB(139, 0, 0)
+            currentTarget = nil
+        end
+    end
+
+    local function updateAimbot()
+        if connection then
+            connection:Disconnect()
+            connection = nil
+        end
+
+        if isAiming and scriptActive then
+            connection = RunService.RenderStepped:Connect(function()
+                if isAiming and scriptActive then
+                    updateFOVPosition()
+                    aimAtClosestTarget()
+                end
+            end)
+            table.insert(allConnections, connection)
+        end
+    end
+
+    local ESP_UPDATE_INTERVAL = 0.1
+
+    local fovConn = RunService.RenderStepped:Connect(function()
+        if not scriptActive then return end
+        
+        updateFOVPosition()
+        
+        -- Limita la frequenza di aggiornamento ESP
+        local now = tick()
+        if now - lastESPUpdate >= ESP_UPDATE_INTERVAL then
+            lastESPUpdate = now
+            updateESP()
+        end
+    end)
+    table.insert(allConnections, fovConn)
+
+    -- UI Functions
+    local function updateModeButtons()
+        if AIM_MODE == "Hold" then
+            HoldButton.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+            HoldButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+            
+            ToggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+            ToggleButton.TextColor3 = Color3.fromRGB(150, 150, 150)
+        else
+            ToggleButton.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+            ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+            
+            HoldButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+            HoldButton.TextColor3 = Color3.fromRGB(150, 150, 150)
+        end
+    end
+
+    -- FUNZIONE AGGIUNTA: Aggiorna i pulsanti di selezione parte aim
+    local function updateAimPartButtons()
+        -- Reset tutti i pulsanti
+        HeadButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        HeadButton.TextColor3 = Color3.fromRGB(150, 150, 150)
+        TorsoR6Button.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        TorsoR6Button.TextColor3 = Color3.fromRGB(150, 150, 150)
+        TorsoR15Button.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        TorsoR15Button.TextColor3 = Color3.fromRGB(150, 150, 150)
+        
+        -- Imposta il pulsante attivo
+        if AIM_PART == "Head" then
+            HeadButton.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+            HeadButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        elseif AIM_PART == "TorsoR6" then
+            TorsoR6Button.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+            TorsoR6Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        elseif AIM_PART == "TorsoR15" then
+            TorsoR15Button.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+            TorsoR15Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        end
+        
+        AimPartLabel.Text = "Current: " .. AIM_PART
+    end
+
+    local function updateStatus()
+        if isAiming then
+            StatusLabel.Text = "Status: 🔴 LOCKED"
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 70, 70)
+        else
+            StatusLabel.Text = "Status: ✅ Ready"
+            StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        end
+    end
+
+    local function getKeyName(key)
+        if key == Enum.UserInputType.MouseButton1 then
+            return "Left Mouse"
+        elseif key == Enum.UserInputType.MouseButton2 then
+            return "Right Mouse"
+        elseif key == Enum.UserInputType.MouseButton3 then
+            return "Middle Mouse"
+        elseif key.EnumType == Enum.KeyCode then
+            return key.Name
+        else
+            return "Unknown"
+        end
+    end
+
+    -- FLY SYSTEM FUNCTIONS
+    local function updateFlyUI()
+        if flyEnabled then
+            FlyToggleButton.Text = "FLY: ON"
+            FlyToggleButton.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+            FlyToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        else
+            FlyToggleButton.Text = "FLY: OFF"
+            FlyToggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+            FlyToggleButton.TextColor3 = Color3.fromRGB(150, 150, 150)
+        end
+        
+        FlySpeedLabel.Text = "Fly Speed: " .. flySpeed
+        FlySpeedInput.Text = tostring(flySpeed)
+        FlySpeedSliderFill.Size = UDim2.new((flySpeed - 10) / 90, 0, 1, 0)
+    end
+
+    -- NUOVI HANDLER: Selezione parte aim
+    HeadButton.MouseButton1Click:Connect(function()
+        AIM_PART = "Head"
+        updateAimPartButtons()
+    end)
+
+    TorsoR6Button.MouseButton1Click:Connect(function()
+        AIM_PART = "TorsoR6"
+        updateAimPartButtons()
+    end)
+
+    TorsoR15Button.MouseButton1Click:Connect(function()
+        AIM_PART = "TorsoR15"
+        updateAimPartButtons()
+    end)
+
+    -- Sliders
+    local SliderButton = SliderBackground:FindFirstChildOfClass("TextButton")
+    SliderButton.MouseButton1Down:Connect(function()
+        draggingSlider = true
+    end)
+
+    local inputEnd1 = UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            draggingSlider = false
+        end
+    end)
+    table.insert(allConnections, inputEnd1)
+
+    local inputChange1 = UserInputService.InputChanged:Connect(function(input)
+        if draggingSlider and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local mousePos = UserInputService:GetMouseLocation()
+            local relativePos = mousePos.X - SliderBackground.AbsolutePosition.X
+            local percentage = math.clamp(relativePos / SliderBackground.AbsoluteSize.X, 0, 1)
+            
+            FOV_SIZE = math.floor(percentage * 300) + 50
+            FOVCircle.Radius = FOV_SIZE
+            SliderFill.Size = UDim2.new(percentage, 0, 1, 0)
+            FOVSizeLabel.Text = "FOV Size: " .. FOV_SIZE
+        end
+    end)
+    table.insert(allConnections, inputChange1)
+
+    VisibilityButton.MouseButton1Click:Connect(function()
+        FOV_VISIBLE = not FOV_VISIBLE
+        FOVCircle.Visible = FOV_VISIBLE
+        
+        if FOV_VISIBLE then
+            VisibilityButton.Text = "FOV Visible: ON"
+            VisibilityButton.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        else
+            VisibilityButton.Text = "FOV Visible: OFF"
+            VisibilityButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        end
+    end)
+
+    -- ESP Toggle Handlers
+    ESPToggleButton.MouseButton1Click:Connect(function()
+        ESP_ENABLED = not ESP_ENABLED
+        toggleESP(ESP_ENABLED)
+        
+        if ESP_ENABLED then
+            ESPToggleButton.Text = "ESP: ON"
+            ESPToggleButton.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+            ESPToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        else
+            ESPToggleButton.Text = "ESP: OFF"
+            ESPToggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+            ESPToggleButton.TextColor3 = Color3.fromRGB(150, 150, 150)
+        end
+    end)
+
+    BoxToggle.MouseButton1Click:Connect(function()
+        ESP_SETTINGS.ShowBoxes = not ESP_SETTINGS.ShowBoxes
+        if ESP_SETTINGS.ShowBoxes then
+            BoxToggle.Text = "Box: ON"
+            BoxToggle.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        else
+            BoxToggle.Text = "Box: OFF"
+            BoxToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        end
+        updateAllESP()
+    end)
+
+    NameToggle.MouseButton1Click:Connect(function()
+        ESP_SETTINGS.ShowNames = not ESP_SETTINGS.ShowNames
+        if ESP_SETTINGS.ShowNames then
+            NameToggle.Text = "Name: ON"
+            NameToggle.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        else
+            NameToggle.Text = "Name: OFF"
+            NameToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        end
+        updateAllESP()
+    end)
+
+    TracerToggle.MouseButton1Click:Connect(function()
+        ESP_SETTINGS.ShowTracers = not ESP_SETTINGS.ShowTracers
+        if ESP_SETTINGS.ShowTracers then
+            TracerToggle.Text = "Tracer: ON"
+            TracerToggle.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        else
+            TracerToggle.Text = "Tracer: OFF"
+            TracerToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        end
+        updateAllESP()
+    end)
+
+    HealthToggle.MouseButton1Click:Connect(function()
+        ESP_SETTINGS.ShowHealth = not ESP_SETTINGS.ShowHealth
+        if ESP_SETTINGS.ShowHealth then
+            HealthToggle.Text = "Health: ON"
+            HealthToggle.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+        else
+            HealthToggle.Text = "Health: OFF"
+            HealthToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        end
+        updateAllESP()
+    end)
+
+    RainbowToggle.MouseButton1Click:Connect(function()
+        ESP_SETTINGS.RainbowMode = not ESP_SETTINGS.RainbowMode
+        if ESP_SETTINGS.RainbowMode then
+            RainbowToggle.Text = "Rainbow: ON"
+            RainbowToggle.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+            RainbowToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+        else
+            RainbowToggle.Text = "Rainbow: OFF"
+            RainbowToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+            RainbowToggle.TextColor3 = Color3.fromRGB(150, 150, 150)
+        end
+        updateAllESP()
+    end)
+
+    HealthColorToggle.MouseButton1Click:Connect(function()
+        if ESP_SETTINGS.HealthColorMode == "match" then
+            ESP_SETTINGS.HealthColorMode = "custom"
+            HealthColorToggle.Text = "Health: Custom"
+        else
+            ESP_SETTINGS.HealthColorMode = "match"
+            HealthColorToggle.Text = "Health: Match"
+        end
+        updateAllESP()
+    end)
+
+    -- Color Wheel
+    local ColorWheel = ColorWheelFrame:FindFirstChildOfClass("ImageLabel")
+    ColorWheel.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            draggingColorWheel = true
+        end
+    end)
+
+    local inputEnd2 = UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            draggingColorWheel = false
+        end
+    end)
+    table.insert(allConnections, inputEnd2)
+
+    local function updateColorFromWheel(input)
+        local mousePos = UserInputService:GetMouseLocation()
+        local wheelPos = ColorWheelFrame.AbsolutePosition
+        local wheelSize = ColorWheelFrame.AbsoluteSize
+        
+        local centerX = wheelPos.X + wheelSize.X / 2
+        local centerY = wheelPos.Y + wheelSize.Y / 2
+        local relX = mousePos.X - centerX
+        local relY = mousePos.Y - centerY
+        
+        local angle = math.atan2(relY, relX)
+        local distance = math.sqrt(relX * relX + relY * relY)
+        local maxDistance = wheelSize.X / 2
+        
+        distance = math.min(distance, maxDistance)
+        
+        ESP_SATURATION = distance / maxDistance
+        ESP_HUE = (angle + math.pi) / (2 * math.pi)
+        ESP_COLOR = Color3.fromHSV(ESP_HUE, ESP_SATURATION, ESP_VALUE)
+        
+        local selectorX = (relX / maxDistance) * (wheelSize.X / 2)
+        local selectorY = (relY / maxDistance) * (wheelSize.Y / 2)
+        ColorSelector.Position = UDim2.new(0.5, selectorX - 6, 0.5, selectorY - 6)
+        
+        ColorPreview.BackgroundColor3 = ESP_COLOR
+        updateAllESP()
+    end
+
+    ColorWheel.InputChanged:Connect(function(input)
+        if draggingColorWheel and input.UserInputType == Enum.UserInputType.MouseMovement then
+            updateColorFromWheel(input)
+        end
+    end)
+
+    local inputChange2 = UserInputService.InputChanged:Connect(function(input)
+        if draggingColorWheel and input.UserInputType == Enum.UserInputType.MouseMovement then
+            updateColorFromWheel(input)
+        end
+    end)
+    table.insert(allConnections, inputChange2)
+
+    -- Thickness Sliders
+    local BoxThicknessSliderButton = BoxThicknessSliderBG:FindFirstChildOfClass("TextButton")
+    BoxThicknessSliderButton.MouseButton1Down:Connect(function()
+        draggingBoxThickness = true
+    end)
+
+    local inputEnd3 = UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            draggingBoxThickness = false
+        end
+    end)
+    table.insert(allConnections, inputEnd3)
+
+    local inputChange3 = UserInputService.InputChanged:Connect(function(input)
+        if draggingBoxThickness and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local mousePos = UserInputService:GetMouseLocation()
+            local relativePos = mousePos.X - BoxThicknessSliderBG.AbsolutePosition.X
+            local percentage = math.clamp(relativePos / BoxThicknessSliderBG.AbsoluteSize.X, 0, 1)
+            
+            ESP_SETTINGS.BoxThickness = math.floor(1 + percentage * 4)
+            BoxThicknessSliderFill.Size = UDim2.new(percentage, 0, 1, 0)
+            BoxThicknessLabel.Text = "Box Thickness: " .. ESP_SETTINGS.BoxThickness
+            updateAllESP()
+        end
+    end)
+    table.insert(allConnections, inputChange3)
+
+    local NameSizeSliderButton = NameSizeSliderBG:FindFirstChildOfClass("TextButton")
+    NameSizeSliderButton.MouseButton1Down:Connect(function()
+        draggingNameSize = true
+    end)
+
+    local inputEnd4 = UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            draggingNameSize = false
+        end
+    end)
+    table.insert(allConnections, inputEnd4)
+
+    local inputChange4 = UserInputService.InputChanged:Connect(function(input)
+        if draggingNameSize and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local mousePos = UserInputService:GetMouseLocation()
+            local relativePos = mousePos.X - NameSizeSliderBG.AbsolutePosition.X
+            local percentage = math.clamp(relativePos / NameSizeSliderBG.AbsoluteSize.X, 0, 1)
+            
+            ESP_SETTINGS.NameSize = math.floor(10 + percentage * 20)
+            NameSizeSliderFill.Size = UDim2.new(percentage, 0, 1, 0)
+            NameSizeLabel.Text = "Name Size: " .. ESP_SETTINGS.NameSize
+            updateAllESP()
+        end
+    end)
+    table.insert(allConnections, inputChange4)
+
+    -- Speed Changer Handlers
+    SpeedChangerToggle.MouseButton1Click:Connect(function()
+        SPEED_CHANGER_ENABLED = not SPEED_CHANGER_ENABLED
+        
+        if SPEED_CHANGER_ENABLED then
+            SpeedChangerToggle.Text = "Speed Changer: ON"
+            SpeedChangerToggle.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+            SpeedChangerToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+            enableSpeedChanger()
+        else
+            SpeedChangerToggle.Text = "Speed Changer: OFF"
+            SpeedChangerToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+            SpeedChangerToggle.TextColor3 = Color3.fromRGB(150, 150, 150)
+            disableSpeedChanger()
+        end
+    end)
+
+    -- Walk Speed Slider
+    local WalkSpeedSliderButton = WalkSpeedSliderBG:FindFirstChildOfClass("TextButton")
+    WalkSpeedSliderButton.MouseButton1Down:Connect(function()
+        draggingWalkSpeed = true
+    end)
+
+    local inputEnd5 = UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            draggingWalkSpeed = false
+        end
+    end)
+    table.insert(allConnections, inputEnd5)
+
+    local inputChange5 = UserInputService.InputChanged:Connect(function(input)
+        if draggingWalkSpeed and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local mousePos = UserInputService:GetMouseLocation()
+            local relativePos = mousePos.X - WalkSpeedSliderBG.AbsolutePosition.X
+            local percentage = math.clamp(relativePos / WalkSpeedSliderBG.AbsoluteSize.X, 0, 1)
+            
+            WALK_SPEED = math.floor(1 + percentage * 199)
+            WalkSpeedSliderFill.Size = UDim2.new(percentage, 0, 1, 0)
+            WalkSpeedLabel.Text = "Walk Speed: " .. WALK_SPEED
+            WalkSpeedInput.Text = tostring(WALK_SPEED)
+            updateSpeedChanger()
+        end
+    end)
+    table.insert(allConnections, inputChange5)
+
+    -- Walk Speed Input
+    WalkSpeedInput.FocusLost:Connect(function()
+        local value = tonumber(WalkSpeedInput.Text)
+        if value then
+            value = math.clamp(value, 1, 200)
+            WALK_SPEED = value
+            local percentage = (value - 1) / 199
+            WalkSpeedSliderFill.Size = UDim2.new(percentage, 0, 1, 0)
+            WalkSpeedLabel.Text = "Walk Speed: " .. WALK_SPEED
+            WalkSpeedInput.Text = tostring(WALK_SPEED)
+            updateSpeedChanger()
+        else
+            WalkSpeedInput.Text = tostring(WALK_SPEED)
+        end
+    end)
+
+    -- Jump Power Slider
+    local JumpPowerSliderButton = JumpPowerSliderBG:FindFirstChildOfClass("TextButton")
+    JumpPowerSliderButton.MouseButton1Down:Connect(function()
+        draggingJumpPower = true
+    end)
+
+    local inputEnd6 = UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            draggingJumpPower = false
+        end
+    end)
+    table.insert(allConnections, inputEnd6)
+
+    local inputChange6 = UserInputService.InputChanged:Connect(function(input)
+        if draggingJumpPower and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local mousePos = UserInputService:GetMouseLocation()
+            local relativePos = mousePos.X - JumpPowerSliderBG.AbsolutePosition.X
+            local percentage = math.clamp(relativePos / JumpPowerSliderBG.AbsoluteSize.X, 0, 1)
+            
+            JUMP_POWER = math.floor(1 + percentage * 199)
+            JumpPowerSliderFill.Size = UDim2.new(percentage, 0, 1, 0)
+            JumpPowerLabel.Text = "Jump Power: " .. JUMP_POWER
+            JumpPowerInput.Text = tostring(JUMP_POWER)
+            updateSpeedChanger()
+        end
+    end)
+    table.insert(allConnections, inputChange6)
+
+    -- Jump Power Input
+    JumpPowerInput.FocusLost:Connect(function()
+        local value = tonumber(JumpPowerInput.Text)
+        if value then
+            value = math.clamp(value, 1, 200)
+            JUMP_POWER = value
+            local percentage = (value - 1) / 199
+            JumpPowerSliderFill.Size = UDim2.new(percentage, 0, 1, 0)
+            JumpPowerLabel.Text = "Jump Power: " .. JUMP_POWER
+            JumpPowerInput.Text = tostring(JUMP_POWER)
+            updateSpeedChanger()
+        else
+            JumpPowerInput.Text = tostring(JUMP_POWER)
+        end
+    end)
+
+    -- FLY SYSTEM HANDLERS
+    FlyToggleButton.MouseButton1Click:Connect(function()
+        toggleFly()
+        updateFlyUI()
+    end)
+
+    -- Fly Speed Slider
+    local FlySpeedSliderButton = FlySpeedSliderBG:FindFirstChildOfClass("TextButton")
+    FlySpeedSliderButton.MouseButton1Down:Connect(function()
+        draggingFlySpeed = true
+    end)
+
+    local inputEnd7 = UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            draggingFlySpeed = false
+        end
+    end)
+    table.insert(allConnections, inputEnd7)
+
+    local inputChange7 = UserInputService.InputChanged:Connect(function(input)
+        if draggingFlySpeed and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local mousePos = UserInputService:GetMouseLocation()
+            local relativePos = mousePos.X - FlySpeedSliderBG.AbsolutePosition.X
+            local percentage = math.clamp(relativePos / FlySpeedSliderBG.AbsoluteSize.X, 0, 1)
+            
+            updateFlySpeed(math.floor(10 + percentage * 90))
+            updateFlyUI()
+        end
+    end)
+    table.insert(allConnections, inputChange7)
+
+    -- Fly Speed Input
+    FlySpeedInput.FocusLost:Connect(function()
+        local value = tonumber(FlySpeedInput.Text)
+        if value then
+            updateFlySpeed(value)
+            updateFlyUI()
+        else
+            FlySpeedInput.Text = tostring(flySpeed)
+        end
+    end)
+
+    -- Up/Down Buttons
+    UpButton.MouseButton1Down:Connect(function()
+        upHolding = true
+    end)
+
+    UpButton.MouseButton1Up:Connect(function()
+        upHolding = false
+    end)
+
+    UpButton.MouseLeave:Connect(function()
+        upHolding = false
+    end)
+
+    DownButton.MouseButton1Down:Connect(function()
+        downHolding = true
+    end)
+
+    DownButton.MouseButton1Up:Connect(function()
+        downHolding = false
+    end)
+
+    DownButton.MouseLeave:Connect(function()
+        downHolding = false
+    end)
+
+    -- Hitbox Expander Handlers
+    HitboxToggleButton.MouseButton1Click:Connect(function()
+        HITBOX_EXPANDER_ENABLED = not HITBOX_EXPANDER_ENABLED
+        
+        if HITBOX_EXPANDER_ENABLED then
+            HitboxToggleButton.Text = "Hitbox Expander: ON"
+            HitboxToggleButton.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+            HitboxToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+            enableHitboxExpander()
+        else
+            HitboxToggleButton.Text = "Hitbox Expander: OFF"
+            HitboxToggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+            HitboxToggleButton.TextColor3 = Color3.fromRGB(150, 150, 150)
+            disableHitboxExpander()
+        end
+    end)
+
+    -- Hitbox Size Slider
+    local HitboxSizeSliderButton = HitboxSizeSliderBG:FindFirstChildOfClass("TextButton")
+    HitboxSizeSliderButton.MouseButton1Down:Connect(function()
+        draggingHitboxSize = true
+    end)
+
+    local inputEnd8 = UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            draggingHitboxSize = false
+        end
+    end)
+    table.insert(allConnections, inputEnd8)
+
+    local inputChange8 = UserInputService.InputChanged:Connect(function(input)
+        if draggingHitboxSize and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local mousePos = UserInputService:GetMouseLocation()
+            local relativePos = mousePos.X - HitboxSizeSliderBG.AbsolutePosition.X
+            local percentage = math.clamp(relativePos / HitboxSizeSliderBG.AbsoluteSize.X, 0, 1)
+            
+            updateHitboxSize(math.floor(1 + percentage * 49))
+            HitboxSizeSliderFill.Size = UDim2.new(percentage, 0, 1, 0)
+            HitboxSizeLabel.Text = "Hitbox Size: " .. HITBOX_SIZE
+            HitboxSizeInput.Text = tostring(HITBOX_SIZE)
+        end
+    end)
+    table.insert(allConnections, inputChange8)
+
+    -- Hitbox Size Input
+    HitboxSizeInput.FocusLost:Connect(function()
+        local value = tonumber(HitboxSizeInput.Text)
+        if value then
+            updateHitboxSize(value)
+            HitboxSizeSliderFill.Size = UDim2.new((HITBOX_SIZE - 1) / 49, 0, 1, 0)
+            HitboxSizeLabel.Text = "Hitbox Size: " .. HITBOX_SIZE
+            HitboxSizeInput.Text = tostring(HITBOX_SIZE)
+        else
+            HitboxSizeInput.Text = tostring(HITBOX_SIZE)
+        end
+    end)
+
+    -- Noclip Handlers
+    NoclipToggleButton.MouseButton1Click:Connect(function()
+        NOCLIP_ENABLED = not NOCLIP_ENABLED
+        
+        if NOCLIP_ENABLED then
+            NoclipToggleButton.Text = "Noclip: ON"
+            NoclipToggleButton.BackgroundColor3 = Color3.fromRGB(139, 0, 0)
+            NoclipToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+            enableNoclip()
+        else
+            NoclipToggleButton.Text = "Noclip: OFF"
+            NoclipToggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+            NoclipToggleButton.TextColor3 = Color3.fromRGB(150, 150, 150)
+            disableNoclip()
+        end
+    end)
+
+    -- UI Hide Keybind Handler
+    UIHideKeybindButton.MouseButton1Click:Connect(function()
+        listeningForUIKeybind = true
+        UIHideKeybindButton.Text = "Press any key..."
+        UIHideKeybindButton.BackgroundColor3 = Color3.fromRGB(80, 0, 0)
+    end)
+
+    local inputBegan3 = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if listeningForUIKeybind then
+            listeningForUIKeybind = false
+            
+            if input.UserInputType == Enum.UserInputType.Keyboard then
+                UI_HIDE_KEYBIND = input.KeyCode
+            else
+                UI_HIDE_KEYBIND = input.UserInputType
+            end
+            
+            UIHideKeybindButton.Text = "UI Hide Key: " .. getKeyName(UI_HIDE_KEYBIND)
+            UIHideKeybindButton.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+        end
+        
+        -- UI Hide con il keybind personalizzato
+        if input.KeyCode == UI_HIDE_KEYBIND then
+            uiHidden = not uiHidden
+            MainFrame.Visible = not uiHidden
+        end
+    end)
+    table.insert(allConnections, inputBegan3)
+
+    -- Aimbot Input
+    local inputBegan1 = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed or not scriptActive then return end
+        
+        if input.UserInputType == currentKeybind or (currentKeybind.EnumType == Enum.KeyCode and input.KeyCode == currentKeybind) then
+            if AIM_MODE == "Hold" then
+                isAiming = true
+                updateAimbot()
+            else
+                isAiming = not isAiming
+                updateAimbot()
+            end
+            updateStatus()
+        end
+    end)
+    table.insert(allConnections, inputBegan1)
+
+    local inputEnd9 = UserInputService.InputEnded:Connect(function(input, gameProcessed)
+        if not scriptActive then return end
+        
+        if input.UserInputType == currentKeybind or (currentKeybind.EnumType == Enum.KeyCode and input.KeyCode == currentKeybind) then
+            if AIM_MODE == "Hold" then
+                isAiming = false
+                updateAimbot()
+                updateStatus()
+            end
+        end
+    end)
+    table.insert(allConnections, inputEnd9)
+
+    -- UI Handlers
+    KeybindButton.MouseButton1Click:Connect(function()
+        listeningForInput = true
+        KeybindButton.Text = "Press any key..."
+        KeybindButton.BackgroundColor3 = Color3.fromRGB(80, 0, 0)
+    end)
+
+    HoldButton.MouseButton1Click:Connect(function()
+        AIM_MODE = "Hold"
+        updateModeButtons()
+        isAiming = false
+        updateAimbot()
+        updateStatus()
+    end)
+
+    ToggleButton.MouseButton1Click:Connect(function()
+        AIM_MODE = "Toggle"
+        updateModeButtons()
+        updateStatus()
+    end)
+
+    local inputBegan2 = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if listeningForInput then
+            listeningForInput = false
+            
+            if input.UserInputType == Enum.UserInputType.Keyboard then
+                currentKeybind = input.KeyCode
+            else
+                currentKeybind = input.UserInputType
+            end
+            
+            KeybindButton.Text = "Keybind: " .. getKeyName(currentKeybind)
+            KeybindButton.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+        end
+    end)
+    table.insert(allConnections, inputBegan2)
+
+    -- Close Button Handler - CHIUDE TUTTO LO SCRIPT
+    CloseButton.MouseButton1Click:Connect(function()
+        cleanupScript()
+        disableSpeedChanger()
+        disableHitboxExpander()
+        disableNoclip()
+        stopFly()
+        
+        if connection then
+            connection:Disconnect()
+        end
+        
+        FOVCircle:Remove()
+        toggleESP(false)
+        
+        for _, data in pairs(ESPObjects) do
+            for _, obj in pairs(data) do
+                obj:Remove()
+            end
+        end
+        
+        MoonlightGUI:Destroy()
+    end)
+
+    -- UI Dragging
+    local dragging, dragInput, dragStart, startPos
+
+    local function update(input)
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+
+    TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    TitleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+
+    local dragConn = UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            update(input)
+        end
+    end)
+    table.insert(allConnections, dragConn)
+
+    -- Initialization
+    updateModeButtons()
+    updateAimPartButtons()
+    updateStatus()
+    updateFlyUI()
+
+    -- Glow animation per il bordo
+    task.spawn(function()
+        while scriptActive do
+            for i = 0, 1, 0.01 do
+                if not scriptActive then break end
+                MainFrameStroke.Color = Color3.fromHSV(0, 1, 0.3 + (i * 0.3))
+                task.wait(0.03)
+            end
+            for i = 1, 0, -0.01 do
+                if not scriptActive then break end
+                MainFrameStroke.Color = Color3.fromHSV(0, 1, 0.3 + (i * 0.3))
+                task.wait(0.03)
+            end
+        end
+    end)
+end
